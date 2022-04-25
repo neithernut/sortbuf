@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
+/// Tests
 
-#[cfg(test)]
-mod tests;
+use super::*;
 
