@@ -3,11 +3,19 @@
 
 use super::*;
 
+use std::cmp::Reverse;
+
 use rand::Rng;
 
 
 /// Item type to use for testing
 type Item = u64;
+
+
+#[test]
+fn bucket_sorted() {
+    assert_sorted(bucket::SortedBucket::from(random_items(1000).collect::<Vec<_>>()).map(Reverse))
+}
 
 
 /// Construct an [Iterator] yielding `num` random items
