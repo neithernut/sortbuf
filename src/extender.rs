@@ -50,6 +50,18 @@ impl<A: BucketAccumulator> Extender<A> {
     pub fn with_bucket_size(bucket_accumulator: A, bucket_size: NonZeroUsize) -> Self {
         Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
     }
+
+    /// Create a new `Extender` with the given target bucket size in bytes
+    ///
+    /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
+    /// committed to that [BucketAccumulator] will be near `bucket_bytesize`
+    /// bytes in size.
+    pub fn with_bucket_bytesize(bucket_accumulator: A, bucket_bytesize: usize) -> Self {
+        let bucket_size = NonZeroUsize::new(bucket_bytesize / std::mem::size_of::<A::Item>())
+            .or(NonZeroUsize::new(1))
+            .expect("Could not compute bucket size");
+        Self::with_bucket_size(bucket_accumulator, bucket_size)
+    }
 }
 
 impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
