@@ -4,6 +4,12 @@
 use std::cmp::Ordering;
 
 
+/// A collection of items to be committed to a [SortBuf](super::SortBuf)
+///
+/// Users of the library will usually not use this type directly.
+pub struct Bucket<T>(pub(crate) Vec<T>);
+
+
 /// A sorted collection of items
 ///
 /// This type wraps a [Vec] of items sorted in ascending order and implements
@@ -14,6 +20,12 @@ use std::cmp::Ordering;
 /// removing) its elements from last to first, i.e. in reverse or descending
 /// order.
 pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
+
+impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
+    fn from(Bucket(items): Bucket<T>) -> Self {
+        items.into()
+    }
+}
 
 impl<T: Ord> From<Vec<T>> for SortedBucket<T> {
     fn from(mut items: Vec<T>) -> Self {
