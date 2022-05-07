@@ -4,12 +4,83 @@
 use super::*;
 
 use std::cmp::Reverse;
+use std::num::NonZeroUsize;
 
 use rand::Rng;
 
 
 /// Item type to use for testing
 type Item = u64;
+
+
+#[test]
+fn bucket_gen_simple() {
+    let mut acc = Default::default();
+    let mut iter = extender::BucketGen::initialize(
+        &mut acc,
+        NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
+        random_items(10_500).fuse(),
+    );
+
+    let (min, max) = iter.size_hint();
+    assert!(min <= 10);
+    assert_eq!(max, Some(10));
+
+    assert!(iter.by_ref().take(10).all(|b| b.0.len() == 1000));
+    assert!(iter.next().is_none());
+    assert_eq!(acc.len(), 500);
+}
+
+
+#[test]
+fn bucket_gen_none() {
+    let mut acc = Default::default();
+    let iter = extender::BucketGen::initialize(
+        &mut acc,
+        NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
+        random_items(500).fuse(),
+    );
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+    assert_eq!(iter.count(), 0);
+}
+
+
+#[test]
+fn bucket_gen_exact() {
+    let mut acc = Default::default();
+    let mut iter = extender::BucketGen::initialize(
+        &mut acc,
+        NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
+        random_items(10_000).fuse(),
+    );
+
+    let (min, max) = iter.size_hint();
+    assert!(min <= 10);
+    assert_eq!(max, Some(10));
+
+    assert!(iter.by_ref().take(10).all(|b| b.0.len() == 1000));
+    assert!(iter.next().is_none());
+    assert_eq!(acc.len(), 0);
+}
+
+
+#[test]
+fn bucket_gen_half_filled() {
+    let mut acc = random_items(500).collect();
+    let mut iter = extender::BucketGen::initialize(
+        &mut acc,
+        NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
+        random_items(500).fuse(),
+    );
+
+    let (min, max) = iter.size_hint();
+    assert!(min <= 1);
+    assert_eq!(max, Some(1));
+
+    assert!(iter.by_ref().take(1).all(|b| b.0.len() == 1000));
+    assert!(iter.next().is_none());
+    assert_eq!(acc.len(), 0);
+}
 
 
 #[test]
