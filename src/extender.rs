@@ -5,6 +5,7 @@ use super::{SortBuf, bucket::Bucket};
 
 use std::iter::FusedIterator;
 use std::num::NonZeroUsize;
+use std::sync::{Arc, Mutex, RwLock};
 
 
 /// Accumulator for [Bucket]s
@@ -28,6 +29,38 @@ impl<T: Ord> BucketAccumulator for &mut SortBuf<T> {
 
     fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
         self.buckets.extend(buckets.map(Into::into))
+    }
+}
+
+impl<A: BucketAccumulator> BucketAccumulator for &mut Mutex<A> {
+    type Item = A::Item;
+
+    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
+        self.lock().expect("Could not lock mutex!").add_buckets(buckets)
+    }
+}
+
+impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
+    type Item = A::Item;
+
+    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
+        self.lock().expect("Could not lock mutex!").add_buckets(buckets)
+    }
+}
+
+impl<A: BucketAccumulator> BucketAccumulator for &mut RwLock<A> {
+    type Item = A::Item;
+
+    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
+        self.write().expect("Could not lock mutex!").add_buckets(buckets)
+    }
+}
+
+impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
+    type Item = A::Item;
+
+    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
+        self.write().expect("Could not lock mutex!").add_buckets(buckets)
     }
 }
 
