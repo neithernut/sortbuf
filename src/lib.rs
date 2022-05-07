@@ -8,6 +8,10 @@ mod iter;
 mod tests;
 
 
+pub use bucket::Bucket;
+pub use extender::{BucketAccumulator, Extender};
+
+
 /// Data structure for preparing a large number of items for sorted iteration
 ///
 /// # Other notes
