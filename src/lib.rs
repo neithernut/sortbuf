@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 mod bucket;
+mod extender;
 mod iter;
 
 #[cfg(test)]
