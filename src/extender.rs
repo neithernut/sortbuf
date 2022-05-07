@@ -32,6 +32,46 @@ impl<T: Ord> BucketAccumulator for &mut SortBuf<T> {
 }
 
 
+/// Item feeder for [BucketAccumulator]s
+///
+/// Instances of this type allow collecting items into [Bucket]s and committing
+/// them to a [BucketAccumulator]. In particular, this type implements [Extend].
+pub struct Extender<A: BucketAccumulator> {
+    item_accumulator: Vec<A::Item>,
+    bucket_accumulator: A,
+    bucket_size: NonZeroUsize,
+}
+
+impl<A: BucketAccumulator> Extender<A> {
+    /// Create a new `Extender` with the given target bucket size
+    ///
+    /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
+    /// committed to that [BucketAccumulator] will have `bucket_size` items.
+    pub fn with_bucket_size(bucket_accumulator: A, bucket_size: NonZeroUsize) -> Self {
+        Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
+    }
+}
+
+impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
+    fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
+        let gen = BucketGen::initialize(
+            &mut self.item_accumulator,
+            self.bucket_size,
+            iter.into_iter().fuse(),
+        );
+        self.bucket_accumulator.add_buckets(gen)
+    }
+}
+
+impl<A: BucketAccumulator> Drop for Extender<A> {
+    fn drop(&mut self) {
+        let mut final_bucket = std::mem::take(&mut self.item_accumulator);
+        final_bucket.shrink_to_fit();
+        self.bucket_accumulator.add_buckets(std::iter::once(Bucket(final_bucket)));
+    }
+}
+
+
 /// Iterator adapter for generating buckets
 ///
 /// This [Iterator] yields [OrderedBuckets] of a fixed size from the items taken
