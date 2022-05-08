@@ -20,47 +20,47 @@ pub trait BucketAccumulator {
     /// The type of items buckets contain
     type Item: Ord;
 
-    /// Add new [Bucket]s to this accumulator
-    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I);
+    /// Add a new [Bucket] to this accumulator
+    fn add_bucket(&mut self, buckets: Bucket<Self::Item>);
 }
 
 impl<T: Ord> BucketAccumulator for &mut SortBuf<T> {
     type Item = T;
 
-    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
-        self.buckets.extend(buckets.map(Into::into))
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+        self.buckets.push(bucket.into())
     }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for &mut Mutex<A> {
     type Item = A::Item;
 
-    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
-        self.lock().expect("Could not lock mutex!").add_buckets(buckets)
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+        self.lock().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
     type Item = A::Item;
 
-    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
-        self.lock().expect("Could not lock mutex!").add_buckets(buckets)
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+        self.lock().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for &mut RwLock<A> {
     type Item = A::Item;
 
-    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
-        self.write().expect("Could not lock mutex!").add_buckets(buckets)
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+        self.write().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
     type Item = A::Item;
 
-    fn add_buckets<I: Iterator<Item = Bucket<Self::Item>>>(&mut self, buckets: I) {
-        self.write().expect("Could not lock mutex!").add_buckets(buckets)
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+        self.write().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
 
@@ -120,12 +120,11 @@ impl<A: BucketAccumulator> Extender<A> {
 
 impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
-        let gen = BucketGen::initialize(
+        BucketGen::initialize(
             &mut self.item_accumulator,
             self.bucket_size,
             iter.into_iter().fuse(),
-        );
-        self.bucket_accumulator.add_buckets(gen)
+        ).for_each(|b| self.bucket_accumulator.add_bucket(b))
     }
 }
 
@@ -133,7 +132,7 @@ impl<A: BucketAccumulator> Drop for Extender<A> {
     fn drop(&mut self) {
         let mut final_bucket = std::mem::take(&mut self.item_accumulator);
         final_bucket.shrink_to_fit();
-        self.bucket_accumulator.add_buckets(std::iter::once(Bucket(final_bucket)));
+        self.bucket_accumulator.add_bucket(Bucket(final_bucket));
     }
 }
 
