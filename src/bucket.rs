@@ -7,6 +7,11 @@ use std::cmp::Ordering;
 /// A collection of items to be committed to a [SortBuf](super::SortBuf)
 ///
 /// Users of the library will usually not use this type directly.
+///
+/// # Other notes
+///
+/// The omission of an implementation of [Clone] for this type is on purpose, as
+/// it holds non-shared ownership over significant amounts of data.
 pub struct Bucket<T>(pub(crate) Vec<T>);
 
 
@@ -24,6 +29,11 @@ pub struct Bucket<T>(pub(crate) Vec<T>);
 ///
 /// Construction of a sorted bucket involves sorting the items. Thus, it comes
 /// with a run-time cost of O(_b_*log(_b_)) with bucket size _b_.
+///
+/// # Other notes
+///
+/// The omission of an implementation of [Clone] for this type is on purpose, as
+/// it holds non-shared ownership over significant amounts of data.
 pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
 
 impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
