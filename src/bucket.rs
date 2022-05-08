@@ -44,13 +44,6 @@ impl<T: Ord> Bucket<T> {
 /// removing) its elements from last to first, i.e. in reverse or descending
 /// order.
 ///
-/// # Time complexity
-///
-/// Construction of a sorted bucket involves sorting the items. Thus, it comes
-/// with a run-time cost of O(_b_*log(_b_)) with bucket size _b_. Constructing a
-/// sorted bucket from a [Bucket] is free, as it only involves repackagaging a
-/// [Vec].
-///
 /// # Other notes
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
@@ -59,13 +52,6 @@ pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
 
 impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
     fn from(Bucket(items): Bucket<T>) -> Self {
-        Self(items)
-    }
-}
-
-impl<T: Ord> From<Vec<T>> for SortedBucket<T> {
-    fn from(mut items: Vec<T>) -> Self {
-        items.sort_unstable();
         Self(items)
     }
 }
