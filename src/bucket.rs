@@ -12,7 +12,26 @@ use std::cmp::Ordering;
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it holds non-shared ownership over significant amounts of data.
-pub struct Bucket<T>(pub(crate) Vec<T>);
+pub struct Bucket<T>(Vec<T>);
+
+impl<T: Ord> Bucket<T> {
+    /// Create a bucket from a [Vec] of items
+    ///
+    /// # Time complexity
+    ///
+    /// Construction of a sorted bucket involves sorting the items. Thus, it
+    /// comes with a run-time cost of O(_b_*log(_b_)) with bucket size _b_.
+    pub(crate) fn new(mut items: Vec<T>) -> Self {
+        items.shrink_to_fit();
+        items.sort_unstable();
+        Self(items)
+    }
+
+    /// Retrieve the number of items in this bucket
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
 
 
 /// A sorted collection of items
@@ -28,7 +47,9 @@ pub struct Bucket<T>(pub(crate) Vec<T>);
 /// # Time complexity
 ///
 /// Construction of a sorted bucket involves sorting the items. Thus, it comes
-/// with a run-time cost of O(_b_*log(_b_)) with bucket size _b_.
+/// with a run-time cost of O(_b_*log(_b_)) with bucket size _b_. Constructing a
+/// sorted bucket from a [Bucket] is free, as it only involves repackagaging a
+/// [Vec].
 ///
 /// # Other notes
 ///
@@ -38,7 +59,7 @@ pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
 
 impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
     fn from(Bucket(items): Bucket<T>) -> Self {
-        items.into()
+        Self(items)
     }
 }
 

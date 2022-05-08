@@ -130,9 +130,7 @@ impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
 
 impl<A: BucketAccumulator> Drop for Extender<A> {
     fn drop(&mut self) {
-        let mut final_bucket = std::mem::take(&mut self.item_accumulator);
-        final_bucket.shrink_to_fit();
-        self.bucket_accumulator.add_bucket(Bucket(final_bucket));
+        self.bucket_accumulator.add_bucket(Bucket::new(std::mem::take(&mut self.item_accumulator)))
     }
 }
 
@@ -177,9 +175,7 @@ impl<T: Ord, I: FusedIterator<Item = T>> Iterator for BucketGen<'_, T, I> {
         // we reach once we end up having room left in the current one.
         if self.accumulator.len() >= bucket_size {
             let next_bucket = self.item_source.by_ref().take(bucket_size).collect();
-            let mut full_bucket = std::mem::replace(self.accumulator, next_bucket);
-            full_bucket.shrink_to_fit();
-            Some(Bucket(full_bucket))
+            Some(Bucket::new(std::mem::replace(self.accumulator, next_bucket)))
         } else {
             None
         }

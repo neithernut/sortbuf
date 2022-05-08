@@ -91,7 +91,7 @@ fn bucket_gen_simple() {
     assert!(min <= 10);
     assert_eq!(max, Some(10));
 
-    assert!(iter.by_ref().take(10).all(|b| b.0.len() == 1000));
+    assert!(iter.by_ref().take(10).all(|b| b.len() == 1000));
     assert!(iter.next().is_none());
     assert_eq!(acc.len(), 500);
 }
@@ -123,7 +123,7 @@ fn bucket_gen_exact() {
     assert!(min <= 10);
     assert_eq!(max, Some(10));
 
-    assert!(iter.by_ref().take(10).all(|b| b.0.len() == 1000));
+    assert!(iter.by_ref().take(10).all(|b| b.len() == 1000));
     assert!(iter.next().is_none());
     assert_eq!(acc.len(), 0);
 }
@@ -142,7 +142,7 @@ fn bucket_gen_half_filled() {
     assert!(min <= 1);
     assert_eq!(max, Some(1));
 
-    assert!(iter.by_ref().take(1).all(|b| b.0.len() == 1000));
+    assert!(iter.by_ref().take(1).all(|b| b.len() == 1000));
     assert!(iter.next().is_none());
     assert_eq!(acc.len(), 0);
 }
