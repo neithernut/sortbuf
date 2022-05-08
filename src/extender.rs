@@ -69,6 +69,14 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 ///
 /// Instances of this type allow collecting items into [Bucket]s and committing
 /// them to a [BucketAccumulator]. In particular, this type implements [Extend].
+///
+/// # Time complexity
+///
+/// The implementation of [Extend::extend] comes with an estimated runtime cost
+/// of O(_n_*log(_b_) + _a_(_n_/_b_)) with _n_ denoting the number of items by
+/// which the `Extender` is extended, _b_ denoting the target bucket size the
+/// instance was constructed with and _a(x)_ denoting the complexity of adding
+/// _x_ buckets to the [BucketAccumulator].
 pub struct Extender<A: BucketAccumulator> {
     item_accumulator: Vec<A::Item>,
     bucket_accumulator: A,
@@ -140,6 +148,14 @@ impl<A: BucketAccumulator> Drop for Extender<A> {
 /// This [Iterator] yields [OrderedBuckets] of a fixed size from the items taken
 /// from a wrapped an [Iterator]. Items are accumulated in a `Vec` which needs
 /// to be supplied by upon creation of a generator by reference.
+///
+/// # Time complexity
+///
+/// The implementation of [Iterator::next] has an amortized time complexity of
+/// O(log(_b_)) with _b_ denoting the bucket size the instance was constructed
+/// with. Draining the entire [Iterator] thus has an expected time complexity
+/// of O(_n_*log(_b_)) with _n_ being the number of items yielded by the item
+/// source.
 pub(crate) struct BucketGen<'a, T: Ord, I: FusedIterator<Item = T>> {
     accumulator: &'a mut Vec<T>,
     bucket_size: NonZeroUsize,
@@ -175,6 +191,8 @@ impl<T: Ord, I: FusedIterator<Item = T>> Iterator for BucketGen<'_, T, I> {
         // we reach once we end up having room left in the current one.
         if self.accumulator.len() >= bucket_size {
             let next_bucket = self.item_source.by_ref().take(bucket_size).collect();
+
+            // Creating a `Bucket` comes with the cost of sorting its items.
             Some(Bucket::new(std::mem::replace(self.accumulator, next_bucket)))
         } else {
             None
