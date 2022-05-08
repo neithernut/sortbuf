@@ -19,6 +19,11 @@ pub struct Bucket<T>(pub(crate) Vec<T>);
 /// In addition, a `SortedBucket` functions as an [Iterator] yielding (and
 /// removing) its elements from last to first, i.e. in reverse or descending
 /// order.
+///
+/// # Time complexity
+///
+/// Construction of a sorted bucket involves sorting the items. Thus, it comes
+/// with a run-time cost of O(_b_*log(_b_)) with bucket size _b_.
 pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
 
 impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
