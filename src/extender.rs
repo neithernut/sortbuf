@@ -24,7 +24,15 @@ pub trait BucketAccumulator {
     fn add_bucket(&mut self, buckets: Bucket<Self::Item>);
 }
 
-impl<T: Ord> BucketAccumulator for &mut SortBuf<T> {
+impl<A: BucketAccumulator> BucketAccumulator for &mut A {
+    type Item = A::Item;
+
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+        (*self).add_bucket(bucket)
+    }
+}
+
+impl<T: Ord> BucketAccumulator for SortBuf<T> {
     type Item = T;
 
     fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
@@ -32,7 +40,7 @@ impl<T: Ord> BucketAccumulator for &mut SortBuf<T> {
     }
 }
 
-impl<A: BucketAccumulator> BucketAccumulator for &mut Mutex<A> {
+impl<A: BucketAccumulator> BucketAccumulator for Mutex<A> {
     type Item = A::Item;
 
     fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
@@ -48,7 +56,7 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
     }
 }
 
-impl<A: BucketAccumulator> BucketAccumulator for &mut RwLock<A> {
+impl<A: BucketAccumulator> BucketAccumulator for RwLock<A> {
     type Item = A::Item;
 
     fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
