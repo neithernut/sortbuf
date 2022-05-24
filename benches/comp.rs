@@ -3,8 +3,38 @@
 use std::time::Duration;
 
 
+const MAX_M_ITEMS: usize = 1024;
+
+
 fn main() {
-    // TODO: impl
+    println!("implementation | 2^20 Is | T wall  ");
+    println!("---------------|---------|---------");
+
+    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 1] = [
+        ("baseline",    &|i| bench_func(baseline, i)),
+    ];
+
+    std::iter::successors(Some(1usize), |s| (*s).checked_mul(4))
+        .take_while(|s| *s <= MAX_M_ITEMS)
+        .flat_map(|s| benches.iter().map(move |(n, b)| (n, s, b)))
+        .for_each(|(n, s, b)| {
+            let (t, d1, d2) = b(s*1024*1024);
+            println!(
+                "{:<15}|{:>9}|{:>9}",
+                n,
+                s,
+                t.as_millis(),
+            )
+        });
+}
+
+
+fn baseline(num: usize) -> impl IntoIterator<Item=u64> {
+    let mut curr = Default::default();
+    random_items(num).map(move |v| {
+        curr = v.saturating_add(curr);
+        curr
+    })
 }
 
 
