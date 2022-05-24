@@ -10,3 +10,7 @@ keywords = ["iterator","sort","sorting"]
 [dev-dependencies]
 rand = "0.8"
 rand_pcg = "0.3"
+
+[[bench]]
+name = "comp"
+harness = false
