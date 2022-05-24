@@ -135,17 +135,47 @@ fn random_items_with_seed(num: usize, seed: u128) -> impl Iterator<Item = u64> {
 /// Snapshot of the current resource usage and time
 #[derive(Copy, Clone, Debug)]
 struct Snapshot {
+    user_time: Duration,
+    system_time: Duration,
 }
 
 impl Snapshot {
     /// Create a new [Snapshot]
     pub fn new() -> Self {
-        Self{}
+        let mut rusage = libc::rusage{
+            ru_utime:       libc::timeval{tv_sec: 0, tv_usec: 0},
+            ru_stime:       libc::timeval{tv_sec: 0, tv_usec: 0},
+            ru_maxrss:      0,
+            ru_ixrss:       0,
+            ru_idrss:       0,
+            ru_isrss:       0,
+            ru_minflt:      0,
+            ru_majflt:      0,
+            ru_nswap:       0,
+            ru_inblock:     0,
+            ru_oublock:     0,
+            ru_msgsnd:      0,
+            ru_msgrcv:      0,
+            ru_nsignals:    0,
+            ru_nvcsw:       0,
+            ru_nivcsw:      0,
+        };
+        if unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut rusage) } != 0 {
+            panic!("Failed to retrieve resource usages.")
+        }
+
+        Self{
+            user_time: duration_from_timeval(rusage.ru_utime),
+            system_time: duration_from_timeval(rusage.ru_stime),
+        }
     }
 
     /// Compare this [Snapshot] to an earlier one
     pub fn diff(&self, older: Self) -> Diff {
-        Diff{}
+        Diff{
+            user_time: self.user_time - older.user_time,
+            system_time: self.system_time - older.system_time,
+        }
     }
 }
 
@@ -153,5 +183,16 @@ impl Snapshot {
 /// The difference between two [Snapshot]s
 #[derive(Copy, Clone, Debug)]
 struct Diff {
+    pub user_time: Duration,
+    pub system_time: Duration,
+}
+
+
+/// Convert a [libc::timeval] to an [std::time::Duration]
+fn duration_from_timeval(val: libc::timeval) -> Duration {
+    Duration::new(
+        val.tv_sec.try_into().expect("Timeval has unsuitable seconds."),
+        (val.tv_usec * 1000).try_into().expect("Timeval has unsuitable microseconds."),
+    )
 }
 
