@@ -138,6 +138,7 @@ fn random_items_with_seed(num: usize, seed: u128) -> impl Iterator<Item = u64> {
 struct Snapshot {
     user_time: Duration,
     system_time: Duration,
+    allocated: usize,
 }
 
 impl Snapshot {
@@ -168,6 +169,7 @@ impl Snapshot {
         Self{
             user_time: duration_from_timeval(rusage.ru_utime),
             system_time: duration_from_timeval(rusage.ru_stime),
+            allocated: ALLOCATOR.allocated(),
         }
     }
 
@@ -176,6 +178,7 @@ impl Snapshot {
         Diff{
             user_time: self.user_time - older.user_time,
             system_time: self.system_time - older.system_time,
+            allocated: self.allocated.saturating_sub(older.allocated)
         }
     }
 }
@@ -186,6 +189,7 @@ impl Snapshot {
 struct Diff {
     pub user_time: Duration,
     pub system_time: Duration,
+    pub allocated: usize,
 }
 
 
