@@ -1,5 +1,6 @@
 //! Comparison between different kinds of sorting buffers
 
+use std::sync::atomic;
 use std::time::Duration;
 
 
@@ -195,4 +196,42 @@ fn duration_from_timeval(val: libc::timeval) -> Duration {
         (val.tv_usec * 1000).try_into().expect("Timeval has unsuitable microseconds."),
     )
 }
+
+
+struct AccountingAlloc {
+    inner: std::alloc::System,
+    allocated: atomic::AtomicUsize,
+}
+
+impl AccountingAlloc {
+    /// Retrieve the number of bytes currently allocated via this allocator.
+    fn allocated(&self) -> usize {
+        self.allocated.load(atomic::Ordering::SeqCst)
+    }
+}
+
+unsafe impl std::alloc::GlobalAlloc for AccountingAlloc {
+    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
+        self.allocated.fetch_add(layout.size(), atomic::Ordering::Release);
+        self.inner.alloc(layout)
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
+        self.allocated.fetch_sub(layout.size(), atomic::Ordering::Release);
+        self.inner.dealloc(ptr, layout)
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, layout: std::alloc::Layout, new_size: usize) -> *mut u8 {
+        if let Some(diff) = layout.size().checked_sub(new_size) {
+            self.allocated.fetch_sub(diff, atomic::Ordering::Release);
+        } else {
+            self.allocated.fetch_add(new_size.saturating_sub(layout.size()), atomic::Ordering::Release);
+        }
+        self.inner.realloc(ptr, layout, new_size)
+    }
+}
+
+
+#[global_allocator]
+static ALLOCATOR: AccountingAlloc = AccountingAlloc{inner: std::alloc::System, allocated: atomic::AtomicUsize::new(0)};
 
