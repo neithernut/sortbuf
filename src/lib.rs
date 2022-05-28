@@ -29,7 +29,7 @@ pub use extender::{BucketAccumulator, Extender};
 /// it is meant for large amounts of data.
 #[derive(Default)]
 pub struct SortBuf<T: Ord> {
-    buckets: std::collections::BinaryHeap<bucket::SortedBucket<T>>,
+    buckets: Vec<bucket::SortedBucket<T>>,
 }
 
 impl<T: Ord> SortBuf<std::cmp::Reverse<T>> {
