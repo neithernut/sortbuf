@@ -32,6 +32,17 @@ pub struct SortBuf<T: Ord> {
     buckets: std::collections::BinaryHeap<bucket::SortedBucket<T>>,
 }
 
+impl<T: Ord> SortBuf<std::cmp::Reverse<T>> {
+    /// Convert into an [Iterator] over items unwrapped from [std::cmp::Reverse]
+    ///
+    /// This funtion allows convenient retrieval of the buffered items in their
+    /// unreversed order. Use this function if you need an iterator over items
+    /// in ascending order.
+    pub fn unreversed(self) -> impl Iterator<Item = T> {
+        self.into_iter().map(|std::cmp::Reverse(v)| v)
+    }
+}
+
 impl<T: Ord> IntoIterator for SortBuf<T> {
     type Item = T;
     type IntoIter = iter::Iter<Self::Item>;
