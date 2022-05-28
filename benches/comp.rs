@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 
+const NUM_THREADS: usize = 4;
 const MAX_M_ITEMS: usize = 1024;
 
 
@@ -10,10 +11,12 @@ fn main() {
     println!("implementation | 2^20 Is | T wall  ");
     println!("---------------|---------|---------");
 
-    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 3] = [
+    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 5] = [
         ("baseline",    &|i| bench_func(baseline, i)),
         ("vec",         &|i| bench_func(fill_vec, i)),
         ("btree",       &|i| bench_func(fill_btree, i)),
+        ("sortbuf",     &|i| bench_func(fill_sortbuf, i)),
+        ("sortbuf 4t",  &|i| bench_func(fill_sortbuf_threads, i)),
     ];
 
     std::iter::successors(Some(1usize), |s| (*s).checked_mul(4))
@@ -49,6 +52,37 @@ fn fill_vec(num: usize) -> impl IntoIterator<Item=u64> {
 
 fn fill_btree(num: usize) -> impl IntoIterator<Item=u64> {
     random_items(num).collect::<std::collections::BTreeSet<_>>()
+}
+
+
+fn fill_sortbuf(num: usize) -> impl IntoIterator<Item=u64> {
+    let mut buf: sortbuf::SortBuf<_> = Default::default();
+
+    let mut extender = sortbuf::Extender::with_default_bucket_size(&mut buf);
+    extender.extend(random_items(num).map(std::cmp::Reverse));
+    std::mem::drop(extender);
+
+    buf.unreversed()
+}
+
+
+fn fill_sortbuf_threads(num: usize) -> impl IntoIterator<Item=u64> {
+    use std::sync::{Arc, Mutex};
+
+    let buf: Arc<Mutex<sortbuf::SortBuf<std::cmp::Reverse<u64>>>> = Default::default();
+
+    random_items(NUM_THREADS).map(|seed| {
+        let mut extender = sortbuf::Extender::with_default_bucket_size(buf.clone());
+        std::thread::spawn(move || extender.extend(
+            random_items_with_seed(num / NUM_THREADS, seed.into()).map(std::cmp::Reverse)
+        ))
+    }).collect::<Vec<_>>().into_iter().try_for_each(|h| h.join()).expect("Error while waiting for threads");
+
+    Arc::try_unwrap(buf)
+        .map_err(|_| ())
+        .and_then(|m| m.into_inner().map_err(|_| ()))
+        .expect("Failed to unwrap buffer!")
+        .unreversed()
 }
 
 
