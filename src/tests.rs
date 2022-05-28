@@ -154,11 +154,7 @@ fn iter_sorted() {
 
     let iter: iter::Iter<Item> = std::iter::from_fn(
         move || Some(items.by_ref().take(1000).collect::<Vec<_>>())
-    ).take_while(|v| !v.is_empty())
-        .map(bucket::Bucket::new)
-        .map(Into::into)
-        .collect::<std::collections::BinaryHeap<_>>()
-        .into();
+    ).take_while(|v| !v.is_empty()).map(bucket::Bucket::new).map(Into::into).collect::<Vec<_>>().into();
 
     assert_sorted(iter.map(Reverse))
 }
@@ -169,11 +165,7 @@ fn iter_count() {
 
     let iter: iter::Iter<Item> = std::iter::from_fn(
         move || Some(items.by_ref().take(1000).collect::<Vec<_>>())
-    ).take_while(|v| !v.is_empty())
-        .map(bucket::Bucket::new)
-        .map(Into::into)
-        .collect::<std::collections::BinaryHeap<_>>()
-        .into();
+    ).take_while(|v| !v.is_empty()).map(bucket::Bucket::new).map(Into::into).collect::<Vec<_>>().into();
 
     assert_eq!(iter.count(), 10_500)
 }

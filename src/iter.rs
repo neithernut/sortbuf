@@ -29,13 +29,7 @@ pub struct Iter<T: Ord> {
 
 impl<T: Ord> From<Vec<SortedBucket<T>>> for Iter<T> {
     fn from(buckets: Vec<SortedBucket<T>>) -> Self {
-        BinaryHeap::from(buckets).into()
-    }
-}
-
-impl<T: Ord> From<BinaryHeap<SortedBucket<T>>> for Iter<T> {
-    fn from(buckets: BinaryHeap<SortedBucket<T>>) -> Self {
-        Self{buckets}
+        Self{buckets: buckets.into()}
     }
 }
 
