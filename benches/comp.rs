@@ -9,8 +9,9 @@ const MAX_M_ITEMS: usize = 1024;
 
 
 fn main() {
-    println!("implementation | 2^20 Is | T wall  ");
-    println!("---------------|---------|---------");
+    println!("implementation | 2^20 Is | T wall  | T_f usr | T_f sys | T_d usr | T_d sys | mem     ");
+    println!("---------------|---------|---------|---------|---------|---------|---------|---------");
+
 
     let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 5] = [
         ("baseline",    &|i| bench_func(baseline, i)),
@@ -26,10 +27,15 @@ fn main() {
         .for_each(|(n, s, b)| {
             let (t, d1, d2) = b(s*1024*1024);
             println!(
-                "{:<15}|{:>9}|{:>9}",
+                "{:<15}|{:>9}|{:>9}|{:>9}|{:>9}|{:>9}|{:>9}|{:>9}",
                 n,
                 s,
                 t.as_millis(),
+                d1.user_time.as_millis(),
+                d1.system_time.as_millis(),
+                d2.user_time.as_millis(),
+                d2.system_time.as_millis(),
+                d1.allocated / (1024*1024),
             )
         });
 }
