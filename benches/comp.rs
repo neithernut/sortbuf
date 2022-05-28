@@ -10,8 +10,10 @@ fn main() {
     println!("implementation | 2^20 Is | T wall  ");
     println!("---------------|---------|---------");
 
-    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 1] = [
+    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 3] = [
         ("baseline",    &|i| bench_func(baseline, i)),
+        ("vec",         &|i| bench_func(fill_vec, i)),
+        ("btree",       &|i| bench_func(fill_btree, i)),
     ];
 
     std::iter::successors(Some(1usize), |s| (*s).checked_mul(4))
@@ -35,6 +37,18 @@ fn baseline(num: usize) -> impl IntoIterator<Item=u64> {
         curr = v.saturating_add(curr);
         curr
     })
+}
+
+
+fn fill_vec(num: usize) -> impl IntoIterator<Item=u64> {
+    let mut buf: Vec<_> = random_items(num).collect();
+    buf.sort_unstable();
+    buf
+}
+
+
+fn fill_btree(num: usize) -> impl IntoIterator<Item=u64> {
+    random_items(num).collect::<std::collections::BTreeSet<_>>()
 }
 
 
