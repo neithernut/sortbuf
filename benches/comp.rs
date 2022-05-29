@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 //! Comparison between different kinds of sorting buffers
 
 use std::sync::atomic;
