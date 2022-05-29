@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 //! Types and utilites for adding items to a [SortBuf](super::SortBuf)
 
-use super::{SortBuf, bucket::Bucket};
+use super::SortBuf;
+use super::bucket::{self, Bucket};
 
 use std::iter::FusedIterator;
 use std::num::NonZeroUsize;
@@ -116,22 +117,10 @@ impl<A: BucketAccumulator> Extender<A> {
     ///
     /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
     /// committed to that [BucketAccumulator] will be of a size near a
-    /// [default bucket size](Self::DEFAULT_BUCKET_BYTESIZE).
+    /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
     pub fn with_default_bucket_size(bucket_accumulator: A) -> Self {
-        Self::with_bucket_bytesize(bucket_accumulator, Self::DEFAULT_BUCKET_BYTESIZE)
+        Self::with_bucket_bytesize(bucket_accumulator, bucket::DEFAULT_BUCKET_BYTESIZE)
     }
-
-    /// Default size for [Bucket]s
-    ///
-    /// This constant holds a default size for buckets, in bytes. The constant
-    /// is choosen to be reasonably large without obstructing the library's use
-    /// on smaller machines. Currently, it is set to 16MB.
-    ///
-    /// The rationale behind that value is that on a typical SBC with a quadcore
-    /// and 1GB of ram, it should be possible to accumulate items into buckets
-    /// for multiple (e.g. 3) [BucketAccumulator]s on all cores without
-    /// exhausting memory (or running into overcommitting).
-    pub const DEFAULT_BUCKET_BYTESIZE: usize = 16*1024*1024;
 }
 
 impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {

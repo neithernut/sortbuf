@@ -8,7 +8,7 @@ mod iter;
 mod tests;
 
 
-pub use bucket::Bucket;
+pub use bucket::{Bucket, DEFAULT_BUCKET_BYTESIZE};
 pub use extender::{BucketAccumulator, Extender};
 
 
