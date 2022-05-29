@@ -13,12 +13,13 @@ fn main() {
     println!("---------------|---------|---------|---------|---------|---------|---------|---------");
 
 
-    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 5] = [
-        ("baseline",    &|i| bench_func(baseline, i)),
-        ("vec",         &|i| bench_func(fill_vec, i)),
-        ("btree",       &|i| bench_func(fill_btree, i)),
-        ("sortbuf",     &|i| bench_func(fill_sortbuf, i)),
-        ("sortbuf 4t",  &|i| bench_func(fill_sortbuf_threads, i)),
+    let benches: [(_, &dyn Fn(usize) -> (Duration, Diff, Diff)); 6] = [
+        ("baseline",        &|i| bench_func(baseline, i)),
+        ("vec",             &|i| bench_func(fill_vec, i)),
+        ("btree",           &|i| bench_func(fill_btree, i)),
+        ("sortbuf",         &|i| bench_func(fill_sortbuf, i)),
+        ("sortbuf jumbo",   &|i| bench_func(fill_sortbuf_jumbo, i)),
+        ("sortbuf 4t",      &|i| bench_func(fill_sortbuf_threads, i)),
     ];
 
     std::iter::successors(Some(1usize), |s| (*s).checked_mul(4))
@@ -66,6 +67,20 @@ fn fill_sortbuf(num: usize) -> impl IntoIterator<Item=u64> {
     let mut buf: sortbuf::SortBuf<_> = Default::default();
 
     let mut extender = sortbuf::Extender::with_default_bucket_size(&mut buf);
+    extender.extend(random_items(num).map(std::cmp::Reverse));
+    std::mem::drop(extender);
+
+    buf.unreversed()
+}
+
+
+fn fill_sortbuf_jumbo(num: usize) -> impl IntoIterator<Item=u64> {
+    let mut buf: sortbuf::SortBuf<_> = Default::default();
+
+    let mut extender = sortbuf::Extender::with_bucket_bytesize(
+        &mut buf,
+        sortbuf::DEFAULT_BUCKET_BYTESIZE * 4,
+    );
     extender.extend(random_items(num).map(std::cmp::Reverse));
     std::mem::drop(extender);
 
