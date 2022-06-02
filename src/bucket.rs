@@ -72,6 +72,14 @@ impl<T: Ord> SortedBucket<T> {
     pub fn overcapacity(&self) -> usize {
         self.0.capacity() - self.0.len()
     }
+
+    /// Shrink the inner [Vec] to the number of items it currently holds
+    ///
+    /// This operation sheds overcapacity.
+    #[inline(always)]
+    pub fn shink_to_fit(&mut self) {
+        self.0.shrink_to_fit()
+    }
 }
 
 impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
