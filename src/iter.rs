@@ -6,6 +6,10 @@ use std::iter::FusedIterator;
 use super::bucket::SortedBucket;
 
 
+/// Default shrinking theshold in bytes
+const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
+
+
 /// [Iterator] yielding items in descending order
 ///
 /// This [Iterator] will yield an item only after all items greater have been
@@ -25,11 +29,15 @@ use super::bucket::SortedBucket;
 /// it is meant for large amounts of data.
 pub struct Iter<T: Ord> {
     buckets: BinaryHeap<SortedBucket<T>>,
+    shrink_theshold: usize,
 }
 
 impl<T: Ord> From<Vec<SortedBucket<T>>> for Iter<T> {
     fn from(buckets: Vec<SortedBucket<T>>) -> Self {
-        Self{buckets: buckets.into()}
+        Self{
+            buckets: buckets.into(),
+            shrink_theshold: DEFAULT_SHRINK_THRESHOLD_BYTES / std::mem::size_of::<T>(),
+        }
     }
 }
 
@@ -43,6 +51,9 @@ impl<T: Ord> Iterator for Iter<T> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(mut bucket) = self.buckets.peek_mut() {
             if let Some(item) = bucket.next() {
+                if bucket.overcapacity() >= self.shrink_theshold {
+                    bucket.shink_to_fit()
+                }
                 return Some(item)
             } else {
                 binary_heap::PeekMut::pop(bucket);
