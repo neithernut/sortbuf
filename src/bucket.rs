@@ -63,6 +63,17 @@ impl<T: Ord> Bucket<T> {
 /// it holds non-shared ownership over significant amounts of data.
 pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
 
+impl<T: Ord> SortedBucket<T> {
+    /// Retrieve the current overcapacity of this bucket
+    ///
+    /// The overcapacity is defined as the number of additional items the inner
+    /// [Vec] has capacity for.
+    #[inline(always)]
+    pub fn overcapacity(&self) -> usize {
+        self.0.capacity() - self.0.len()
+    }
+}
+
 impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
     fn from(Bucket(items): Bucket<T>) -> Self {
         Self(items)
