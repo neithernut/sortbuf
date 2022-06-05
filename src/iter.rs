@@ -15,6 +15,11 @@ const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
 /// This [Iterator] will yield an item only after all items greater have been
 /// yielded.
 ///
+/// The iterator will release memory from time to time during iteration. The
+/// specifics are controlled via an internal threshold which can be altered
+/// through [Iter::with_shrink_threshold] and
+/// [Iter::with_shrink_threshold_bytes].
+///
 /// # Time complexity
 ///
 /// The implementation of [Iterator::next] has an amortized time complexity of
@@ -30,6 +35,32 @@ const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
 pub struct Iter<T: Ord> {
     buckets: BinaryHeap<SortedBucket<T>>,
     shrink_theshold: usize,
+}
+
+impl<T: Ord> Iter<T> {
+    /// Set the number of unused item slots buckets are allowed to accumulate
+    ///
+    /// This iterator pulls items from a number of buckets, which will thus
+    /// accumulate unused item slots. If a certain number of unused slots exists
+    /// in a bucket, the iterator will try to shrink the underlying storage and
+    /// thus make memory availible again.
+    ///
+    /// This function allows specifying the shrinking threshold.
+    pub fn with_shrink_threshold(self, shrink_theshold: usize) -> Self {
+        Self{shrink_theshold, ..self}
+    }
+
+    /// Set the number of unused bytes buckets are allowed to accumulate
+    ///
+    /// This iterator pulls items from a number of buckets, which will thus
+    /// accumulate unused memory. If a certain amount exists in a bucket, the
+    /// iterator will try to shrink the underlying storage and thus make memory
+    /// availible again.
+    ///
+    /// This function allows specifying the shrinking threshold, in bytes.
+    pub fn with_shrink_threshold_bytes(self, shrink_theshold: usize) -> Self {
+        self.with_shrink_threshold(shrink_theshold / std::mem::size_of::<T>())
+    }
 }
 
 impl<T: Ord> From<Vec<SortedBucket<T>>> for Iter<T> {
