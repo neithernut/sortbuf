@@ -76,10 +76,12 @@ impl<T: Ord> std::iter::FusedIterator for SortedBucket<T> {}
 impl<T: Ord> Iterator for SortedBucket<T> {
     type Item = T;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<T> {
         self.0.pop()
     }
 
+    #[inline(always)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.0.len();
         (len, Some(len))
@@ -87,12 +89,14 @@ impl<T: Ord> Iterator for SortedBucket<T> {
 }
 
 impl<T: Ord> Ord for SortedBucket<T> {
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&self.0.last(), &other.0.last())
     }
 }
 
 impl<T: Ord> PartialOrd for SortedBucket<T> {
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&self.0.last(), &other.0.last())
     }
@@ -101,6 +105,7 @@ impl<T: Ord> PartialOrd for SortedBucket<T> {
 impl<T: Ord> Eq for SortedBucket<T> {}
 
 impl<T: Ord> PartialEq for SortedBucket<T> {
+    #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(&self.0.last(), &other.0.last())
     }
