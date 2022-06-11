@@ -135,7 +135,10 @@ impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
 
 impl<A: BucketAccumulator> Drop for Extender<A> {
     fn drop(&mut self) {
-        self.bucket_accumulator.add_bucket(Bucket::new(std::mem::take(&mut self.item_accumulator)))
+        let acc = std::mem::take(&mut self.item_accumulator);
+        if !acc.is_empty() {
+            self.bucket_accumulator.add_bucket(Bucket::new(acc))
+        }
     }
 }
 
