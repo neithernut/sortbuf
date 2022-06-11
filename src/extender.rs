@@ -85,7 +85,9 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// of O(_n_*log(_b_) + _a_(_n_/_b_)) with _n_ denoting the number of items by
 /// which the `Extender` is extended, _b_ denoting the target bucket size the
 /// instance was constructed with and _a(x)_ denoting the complexity of adding
-/// _x_ buckets to the [BucketAccumulator].
+/// _x_ buckets to the [BucketAccumulator]. Since the influence of the second
+/// term will be neglectible for sufficiently large _b_ and all relevant
+/// implementations, the estimated runtime cost is effectifely O(_n_*log(_b_)).
 pub struct Extender<A: BucketAccumulator> {
     item_accumulator: Vec<A::Item>,
     bucket_accumulator: A,
