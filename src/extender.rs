@@ -23,6 +23,15 @@ pub trait BucketAccumulator {
 
     /// Add a new [Bucket] to this accumulator
     fn add_bucket(&mut self, buckets: Bucket<Self::Item>);
+
+    /// Create an [Extender] for this accumulator
+    ///
+    /// Create a new [Extender] for this accumulator. [Bucket]s committed though
+    /// the [Extender] returned will be of a size near a
+    /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
+    fn extender(self) -> Extender<Self> where Self: Sized {
+        Extender::new(self)
+    }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for &mut A {
