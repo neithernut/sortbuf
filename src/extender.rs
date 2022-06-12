@@ -95,33 +95,39 @@ pub struct Extender<A: BucketAccumulator> {
 }
 
 impl<A: BucketAccumulator> Extender<A> {
-    /// Create a new `Extender` with the given target bucket size
-    ///
-    /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
-    /// committed to that [BucketAccumulator] will have `bucket_size` items.
-    pub fn with_bucket_size(bucket_accumulator: A, bucket_size: NonZeroUsize) -> Self {
-        Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
-    }
-
-    /// Create a new `Extender` with the given target bucket size in bytes
-    ///
-    /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
-    /// committed to that [BucketAccumulator] will be near `bucket_bytesize`
-    /// bytes in size.
-    pub fn with_bucket_bytesize(bucket_accumulator: A, bucket_bytesize: usize) -> Self {
-        let bucket_size = NonZeroUsize::new(bucket_bytesize / std::mem::size_of::<A::Item>())
-            .or(NonZeroUsize::new(1))
-            .expect("Could not compute bucket size");
-        Self::with_bucket_size(bucket_accumulator, bucket_size)
-    }
-
     /// Create a new `Extender` with a default bucket target size
     ///
     /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
     /// committed to that [BucketAccumulator] will be of a size near a
     /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
-    pub fn with_default_bucket_size(bucket_accumulator: A) -> Self {
-        Self::with_bucket_bytesize(bucket_accumulator, bucket::DEFAULT_BUCKET_BYTESIZE)
+    pub fn new(bucket_accumulator: A) -> Self {
+        let bucket_size = Self::size_from_bytesize(bucket::DEFAULT_BUCKET_BYTESIZE);
+        Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
+    }
+
+    /// Set a new target bucket size
+    ///
+    /// After calling this function, this extender will commit [Bucket]s
+    /// containing ner `size` items.
+    pub fn set_bucket_size(&mut self, size: NonZeroUsize) -> &mut Self {
+        self.bucket_size = size;
+        self
+    }
+
+    /// Set a new target bucket size in bytes
+    ///
+    /// After calling this function, this extender will commit [Bucket]s near
+    /// `bytesize` bytes in size.
+    pub fn set_bucket_bytesize(&mut self, bytesize: usize) -> &mut Self {
+        self.bucket_size = Self::size_from_bytesize(bytesize);
+        self
+    }
+
+    /// Determine the bucket target size for a given bytesize
+    fn size_from_bytesize(bytesize: usize) -> NonZeroUsize {
+        NonZeroUsize::new(bytesize / std::mem::size_of::<A::Item>())
+            .or(NonZeroUsize::new(1))
+            .expect("Could not compute bucket size")
     }
 }
 

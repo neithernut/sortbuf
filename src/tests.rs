@@ -17,10 +17,8 @@ type Item = u64;
 fn extender_simple() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::with_bucket_size(
-            &mut buf,
-            NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
-        );
+        let mut extender = extender::Extender::new(&mut buf);
+        extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(10_500));
     }
 
@@ -33,10 +31,8 @@ fn extender_simple() {
 fn extender_half() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::with_bucket_size(
-            &mut buf,
-            NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
-        );
+        let mut extender = extender::Extender::new(&mut buf);
+        extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(500));
     }
 
@@ -49,10 +45,8 @@ fn extender_half() {
 fn extender_exact() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::with_bucket_size(
-            &mut buf,
-            NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
-        );
+        let mut extender = extender::Extender::new(&mut buf);
+        extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(10_000));
     }
 
@@ -65,10 +59,8 @@ fn extender_exact() {
 fn extender_multiple() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::with_bucket_size(
-            &mut buf,
-            NonZeroUsize::new(1000).expect("Failed to construct bucket size"),
-        );
+        let mut extender = extender::Extender::new(&mut buf);
+        extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(500));
         extender.extend(random_items(1000));
     }
