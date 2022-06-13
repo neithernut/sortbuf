@@ -23,6 +23,24 @@ pub use extender::{BucketAccumulator, Extender};
 /// For ascending iteration, users need to wrap items in [std::cmp::Reverse] and
 /// unwrap them during the final iteration.
 ///
+/// # Time complexity
+///
+/// Assuming a fixed bucket size _b_, the estimated runtime cost of inserting _n_
+/// items via [Extender]s is O(_n_ log(_b_)). The estimated runtime cost of
+/// draining the [Iterator] provided through this type's [IntoIterator] impl is
+/// O(_n_ log(_n_/_b_)).
+///
+/// In practice, the runtime cost will be higher for draining the iterator than
+/// for the insertion. The iteration performance will be significantly affected
+/// by the term log(_n_/_b_), since it will be reflected in the average number
+/// of cache-misses involved in retrieving a single item. Thus, greater values
+/// of _b_ are to be preferred. As a rule of thumb, aim for a number of buckets
+/// (i.e. _n_/_b_) well under 100 for ok-ish performance.
+///
+/// Note also that the cost of insertion can be split between multiple threads,
+/// if the [SortBuf] is wrapped in a mutex for which the [BucketAccumulator]
+/// trait is implemented.
+///
 /// # Other notes
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
