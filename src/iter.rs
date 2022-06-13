@@ -26,7 +26,7 @@ const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
 /// O(log(_n_/_b_)) with _n_ denoting the number of items and _b_ denoting the
 /// bucket size the instance was constructed with, under the assuption that the
 /// distribution of values amongst buckets is uniform. Draining the entire
-/// [Iterator] thus has an expected runtime complexity of O(log(_n_/_b_)*_n_).
+/// [Iterator] thus has an expected runtime complexity of O(_n_ log(_n_/_b_)).
 ///
 /// # Other notes
 ///
