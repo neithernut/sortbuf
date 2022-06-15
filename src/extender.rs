@@ -97,6 +97,20 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// _x_ buckets to the [BucketAccumulator]. Since the influence of the second
 /// term will be neglectible for sufficiently large _b_ and all relevant
 /// implementations, the estimated runtime cost is effectifely O(_n_ log(_b_)).
+///
+/// # Bucket target size
+///
+/// While the above indicates that insertion is more costly with larget bucket
+/// sizes, the _overall_ sorting performance benefits from larger buckets.
+///
+/// An `Extender` fills [Bucket]s up to a target bucket size. A new `Extender`
+/// is initialized with a [default value](bucket::DEFAULT_BUCKET_BYTESIZE) which
+/// is chosen to be safe in most situations, i.e. a value which is unlikely to
+/// promote exhausting or overcomitting memory. However, for better performance
+/// users of this type are encouraged to choose a target bucket size based on
+/// the availible memory and the number of `Extender`s involved in the target
+/// use-case.
+///
 pub struct Extender<A: BucketAccumulator> {
     item_accumulator: Vec<A::Item>,
     bucket_accumulator: A,
