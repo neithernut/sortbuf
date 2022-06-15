@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+//! [Iter] type and related utilities
 
 use std::collections::binary_heap::{self, BinaryHeap};
 use std::iter::FusedIterator;
