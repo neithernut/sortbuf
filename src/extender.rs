@@ -132,6 +132,16 @@ impl<A: BucketAccumulator> Extender<A> {
         self
     }
 
+    /// Get the current target bucket size in items
+    pub fn bucket_size(&self) -> NonZeroUsize {
+        self.bucket_size
+    }
+
+    /// Get the current target bucket size in bytes
+    pub fn bucket_bytesize(&self) -> usize {
+        self.bucket_size.get() * std::mem::size_of::<A::Item>()
+    }
+
     /// Determine the bucket target size for a given bytesize
     fn size_from_bytesize(bytesize: usize) -> NonZeroUsize {
         NonZeroUsize::new(bytesize / std::mem::size_of::<A::Item>())
