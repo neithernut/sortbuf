@@ -117,7 +117,7 @@ impl<A: BucketAccumulator> Extender<A> {
     /// Set a new target bucket size
     ///
     /// After calling this function, this extender will commit [Bucket]s
-    /// containing ner `size` items.
+    /// containing near `size` items.
     pub fn set_bucket_size(&mut self, size: NonZeroUsize) -> &mut Self {
         self.bucket_size = size;
         self
