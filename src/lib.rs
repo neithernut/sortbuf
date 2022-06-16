@@ -1,4 +1,50 @@
 // SPDX-License-Identifier: MIT
+//! Sort a large number of items in memory
+//!
+//! This library provides types, most prominently [SortBuf], and traits for
+//! accumulating a large number of items in memory and iterating over them in
+//! ascending or descending order (as per [Ord]). The implementation
+//!
+//! * avoids potentially costly reallocations,
+//! * releases chunks of memory every now and then during iteration,
+//! * doesn't introduce much memory overhead,
+//! * supports multi-threaded insertion and
+//! * isn't awfully slow.
+//!
+//! # Examples
+//!
+//! Natively, [SortBuf] will prepare items for descending iteration:
+//!
+//! ```
+//! let mut sortbuf = sortbuf::SortBuf::new();
+//! let mut extender = sortbuf::Extender::new(&mut sortbuf);
+//! extender.extend([10, 20, 5, 17]);
+//! drop(extender);
+//! assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
+//! ```
+//!
+//! For ascending iteration, items need to be wrapped in [std::cmp::Reverse]:
+//!
+//! ```
+//! let mut sortbuf = sortbuf::SortBuf::new();
+//! let mut extender = sortbuf::Extender::new(&mut sortbuf);
+//! extender.extend([10, 20, 5, 17].into_iter().map(std::cmp::Reverse));
+//! drop(extender);
+//! assert!(sortbuf.unreversed().eq([5, 10, 17, 20]));
+//! ```
+//!
+//! Multithreaded insertion is supported via multiple [Extender]s:
+//!
+//! ```
+//! use std::sync::{Arc, Mutex};
+//! let sortbuf: Arc<Mutex<sortbuf::SortBuf<_>>> = Default::default();
+//! let workers: Vec<_> = (0..4).map(|n| {
+//!     let mut extender = sortbuf::Extender::new(sortbuf.clone());
+//!     std::thread::spawn(move || extender.extend((0..1000).map(|i| 4*i+n)))
+//! }).collect();
+//! workers.into_iter().try_for_each(|h| h.join()).unwrap();
+//! assert!(sortbuf.lock().unwrap().take().into_iter().eq((0..4000).rev()));
+//! ```
 
 mod bucket;
 mod extender;
