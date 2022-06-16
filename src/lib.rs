@@ -50,6 +50,13 @@ pub struct SortBuf<T: Ord> {
     buckets: Vec<bucket::SortedBucket<T>>,
 }
 
+impl<T: Ord> SortBuf<T> {
+    /// Create a new sorting buffer
+    pub fn new() -> Self {
+        Self {buckets: Vec::new()}
+    }
+}
+
 impl<T: Ord> SortBuf<std::cmp::Reverse<T>> {
     /// Convert into an [Iterator] over items unwrapped from [std::cmp::Reverse]
     ///
