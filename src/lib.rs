@@ -54,6 +54,11 @@ impl<T: Ord> SortBuf<T> {
     pub fn new() -> Self {
         Self {buckets: Vec::new()}
     }
+
+    /// Take this buffer's contents, leaving an empty buffer
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
 }
 
 impl<T: Ord> Default for SortBuf<T> {
