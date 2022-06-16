@@ -45,7 +45,6 @@ pub use extender::{BucketAccumulator, Extender};
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it is meant for large amounts of data.
-#[derive(Default)]
 pub struct SortBuf<T: Ord> {
     buckets: Vec<bucket::SortedBucket<T>>,
 }
@@ -54,6 +53,12 @@ impl<T: Ord> SortBuf<T> {
     /// Create a new sorting buffer
     pub fn new() -> Self {
         Self {buckets: Vec::new()}
+    }
+}
+
+impl<T: Ord> Default for SortBuf<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
