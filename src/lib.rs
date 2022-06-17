@@ -45,6 +45,51 @@
 //! workers.into_iter().try_for_each(|h| h.join()).unwrap();
 //! assert!(sortbuf.lock().unwrap().take().into_iter().eq((0..4000).rev()));
 //! ```
+//!
+//! # Approach and comparison
+//!
+//! As indicated in the examples above, adding new items to a buffer is done via
+//! [Extender]s. These accumulate items in pre-sorted [Bucket]s and commit them
+//! to their target buffer. Later, that buffer can be converted to an [Iterator]
+//! which yields items taken from those [Bucket]s, which involves selecting the
+//! [Bucket] with the current greatest item in the buffer.
+//!
+//! While a significant amount of time is spent during insertion, the majority
+//! of time is usually spent during iteration. Performance is usually better,
+//! and skews towards more time spent in the parallelizable insertion state,
+//! with fewer, bigger [Bucket]s. As [Bucket]s are pre-allocated, this comes at
+//! the cost of flexibility regarding memory.
+//!
+//! ## Comparison to Vec and sort
+//!
+//! Buffering and sorting items can also be done using a [Vec] (for buffering)
+//! in conjunction with [slice::sort], [slice::sort_unstable] or another sorting
+//! function. The process is then usually split into an insertion, a sorting and
+//! an iteration phase, with sort being the most computational intensive phase.
+//!
+//! Sorting and iteration over the items in a [Vec] is generally faster than
+//! with the utilities provided by this library ---in the single-threaded case.
+//! However, this library does allow insertion from multiple threads, contrary
+//! to a bare [Vec]. In addition, the performance of inserting items into a
+//! [Vec] hinges on the reallocation performance, which might be poor in some
+//! cases, e.g. if multiple buffers are involved.
+//!
+//! The need of a single, separate, computational intensive sorting phase may
+//! also have some implications on overall performance in some use-cases. With
+//! the types provided by this library, sorting will likely interleave with I/O
+//! linked to insertion and/or the final iteration, spread out over the entire
+//! process. Thus, the underlying OS may have more opportunities to perform
+//! background operations related to reads (insertion stage) and writes
+//! (iteration stage), increasing the overall throughput.
+//!
+//! ## Comparison to BTreeSet
+//!
+//! Another option for sorting items without the need for a separate sorting
+//! phase would be an [BTreeSet](std::collections::BTreeSet). Contrary to the
+//! `sortbuf` approach, most of the time is spent in the insertion phase rather
+//! than the iteration phase. Using a [BTreeSet](std::collections::BTreeSet) is
+//! usually slower than a [SortBuf] with sufficiently large [Bucket]s, not
+//! parallelizable and incurs a higher memory overhead.
 
 mod bucket;
 mod extender;
