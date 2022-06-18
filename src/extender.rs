@@ -220,13 +220,7 @@ impl<A: BucketAccumulator> Extender<A> {
 
 impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
-        BucketGen::initialize(
-            &mut self.item_accumulator,
-            self.bucket_size,
-            iter.into_iter().fuse(),
-        ).try_for_each(|b| self.bucket_accumulator.add_bucket(b))
-            .map_err(|(e, _)| e)
-            .expect("Failed to add bucket")
+        self.insert_items(iter).map_err(|(e, _)| e).expect("Failed to insert items")
     }
 }
 
