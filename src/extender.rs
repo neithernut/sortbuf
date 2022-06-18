@@ -5,7 +5,6 @@ use super::SortBuf;
 use super::bucket::{self, Bucket};
 use super::error::InsertionResult;
 
-use std::iter::FusedIterator;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -233,75 +232,6 @@ impl<A: BucketAccumulator> Drop for Extender<A> {
                 .map_err(|(e, _)| e)
                 .expect("Failed to add final bucket")
         }
-    }
-}
-
-
-/// Iterator adapter for generating buckets
-///
-/// This [Iterator] yields [OrderedBuckets] of a fixed size from the items taken
-/// from a wrapped an [Iterator]. Items are accumulated in a `Vec` which needs
-/// to be supplied by upon creation of a generator by reference.
-///
-/// # Time complexity
-///
-/// The implementation of [Iterator::next] has an amortized time complexity of
-/// O(log(_b_)) with _b_ denoting the bucket size the instance was constructed
-/// with. Draining the entire [Iterator] thus has an expected time complexity
-/// of O(_n_*log(_b_)) with _n_ being the number of items yielded by the item
-/// source.
-pub(crate) struct BucketGen<'a, T: Ord, I: FusedIterator<Item = T>> {
-    accumulator: &'a mut Vec<T>,
-    bucket_size: NonZeroUsize,
-    item_source: I,
-}
-
-impl<'a, T: Ord, I: FusedIterator<Item = T>> BucketGen<'a, T, I> {
-    /// Create a generator, initializing the given accumulator
-    ///
-    /// This function creates a bucket generator yielding buckets of the given
-    /// `bucket_size` (number of items in a bucket). As a preparation, it tries
-    /// to fill up the given accumulator with items. If the terget `bucket_size`
-    /// is not reached during initialization, the resulting [Iterator] will not
-    /// yield any buckets.
-    pub fn initialize(accumulator: &'a mut Vec<T>, bucket_size: NonZeroUsize, mut item_source: I) -> Self {
-        let head_room = bucket_size.get().saturating_sub(accumulator.len());
-        accumulator.reserve(head_room);
-        accumulator.extend(item_source.by_ref().take(head_room));
-
-        Self{accumulator, bucket_size, item_source}
-    }
-}
-
-impl<T: Ord, I: FusedIterator<Item = T>> FusedIterator for BucketGen<'_, T, I> {}
-
-impl<T: Ord, I: FusedIterator<Item = T>> Iterator for BucketGen<'_, T, I> {
-    type Item = Bucket<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let bucket_size = self.bucket_size.get();
-
-        // We'll fill bucket after bucket until we drained iter dry. That point
-        // we reach once we end up having room left in the current one.
-        if self.accumulator.len() >= bucket_size {
-            let next_bucket = self.item_source.by_ref().take(bucket_size).collect();
-
-            // Creating a `Bucket` comes with the cost of sorting its items.
-            Some(Bucket::new(std::mem::replace(self.accumulator, next_bucket)))
-        } else {
-            None
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let current_bucket = self.accumulator.len();
-        let bucket_size = self.bucket_size.get();
-        let (source_min, source_max) = self.item_source.size_hint();
-
-        (
-            (source_min.saturating_add(current_bucket) / bucket_size),
-            source_max.and_then(|s| s.checked_add(current_bucket)).map(|s| (s / bucket_size))
-        )
     }
 }
 
