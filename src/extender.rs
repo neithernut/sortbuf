@@ -136,6 +136,52 @@ impl<A: BucketAccumulator> Extender<A> {
         Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
     }
 
+    /// Insert items into the accumulator
+    ///
+    /// This function inserts the given `items` to the buffer. If the insertion
+    /// fails due to an (re-)allocation failure, an error is returned alongside
+    /// an iterator over those items that were not inserted.
+    pub fn insert_items(
+        &mut self,
+        items: impl IntoIterator<Item = A::Item>,
+    ) -> InsertionResult<impl Iterator<Item = A::Item>> {
+        let mut items = items.into_iter().fuse();
+
+        // The bucket size may have changed since the last attempt to insert
+        // items. We don't want to grow buckets (or accumulators) after their
+        // creation, as the reallocation might be costly. Shrinking, however,
+        // should be unproblematic.
+        let bucket_size = self.bucket_size.get();
+        self.item_accumulator.shrink_to(bucket_size);
+
+        // We first try to fill the current bucket to its capacity.
+        let head_room = self.item_accumulator.capacity().saturating_sub(self.item_accumulator.len());
+        self.item_accumulator.extend(items.by_ref().take(head_room));
+
+        // As long as we get full buckets worth of items out of the iterator, we
+        // have buckets to add to the target buffer.
+        while self.item_accumulator.len() >= self.item_accumulator.capacity() {
+            let bucket = Bucket::new(std::mem::take(&mut self.item_accumulator));
+            if bucket.len() > 0 {
+                match self.bucket_accumulator.add_bucket(bucket) {
+                    Ok(_)       => (),
+                    Err((e, b)) => {
+                        self.item_accumulator = b.into_inner();
+                        return Err((e, items))
+                    },
+                }
+            }
+
+            match self.item_accumulator.try_reserve(bucket_size) {
+                Ok(_)   => (),
+                Err(e)  => return Err((e.into(), items))
+            }
+            self.item_accumulator.extend(items.by_ref().take(self.item_accumulator.capacity()));
+        }
+
+        Ok(())
+    }
+
     /// Set a new target bucket size
     ///
     /// After calling this function, this extender will commit [Bucket]s
