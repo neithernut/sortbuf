@@ -95,6 +95,8 @@ mod bucket;
 mod extender;
 mod iter;
 
+pub mod error;
+
 #[cfg(test)]
 mod tests;
 
