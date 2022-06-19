@@ -40,6 +40,11 @@ impl<T: Ord> Bucket<T> {
         Self(items)
     }
 
+    /// Convert this bucket back to a [Vec]
+    pub(crate) fn into_inner(self) -> Vec<T> {
+        self.0
+    }
+
     /// Retrieve the number of items in this bucket
     pub fn len(&self) -> usize {
         self.0.len()
