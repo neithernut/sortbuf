@@ -30,3 +30,10 @@ impl fmt::Display for InsertionError {
     }
 }
 
+
+/// Result type for insertions
+///
+/// In the case of an insertion failure, we need to return an `InsertionError`.
+/// However, we also want to return the item(s) we failed to insert in some way.
+pub type InsertionResult<T> = Result<(), (InsertionError, T)>;
+
