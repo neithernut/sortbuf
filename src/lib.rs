@@ -18,7 +18,7 @@
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
 //! let mut extender = sortbuf::Extender::new(&mut sortbuf);
-//! extender.extend([10, 20, 5, 17]);
+//! extender.insert_items([10, 20, 5, 17]).map_err(|(e, _)| e).expect("Failed to insert items");
 //! drop(extender);
 //! assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
 //! ```
@@ -28,7 +28,10 @@
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
 //! let mut extender = sortbuf::Extender::new(&mut sortbuf);
-//! extender.extend([10, 20, 5, 17].into_iter().map(std::cmp::Reverse));
+//! extender
+//!     .insert_items([10, 20, 5, 17].into_iter().map(std::cmp::Reverse))
+//!     .map_err(|(e, _)| e)
+//!     .expect("Failed to insert items");
 //! drop(extender);
 //! assert!(sortbuf.unreversed().eq([5, 10, 17, 20]));
 //! ```
@@ -40,7 +43,10 @@
 //! let sortbuf: Arc<Mutex<sortbuf::SortBuf<_>>> = Default::default();
 //! let workers: Vec<_> = (0..4).map(|n| {
 //!     let mut extender = sortbuf::Extender::new(sortbuf.clone());
-//!     std::thread::spawn(move || extender.extend((0..1000).map(|i| 4*i+n)))
+//!     std::thread::spawn(move || extender
+//!         .insert_items((0..1000).map(|i| 4*i+n))
+//!         .map_err(|(e, _)| e)
+//!         .expect("Failed to insert items"))
 //! }).collect();
 //! workers.into_iter().try_for_each(|h| h.join()).unwrap();
 //! assert!(sortbuf.lock().unwrap().take().into_iter().eq((0..4000).rev()));
@@ -94,6 +100,8 @@
 mod bucket;
 mod extender;
 mod iter;
+
+pub mod error;
 
 #[cfg(test)]
 mod tests;

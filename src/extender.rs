@@ -3,8 +3,8 @@
 
 use super::SortBuf;
 use super::bucket::{self, Bucket};
+use super::error::InsertionResult;
 
-use std::iter::FusedIterator;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -22,7 +22,11 @@ pub trait BucketAccumulator {
     type Item: Ord;
 
     /// Add a new [Bucket] to this accumulator
-    fn add_bucket(&mut self, buckets: Bucket<Self::Item>);
+    ///
+    /// This function adds the given [Bucket] to the accumulator. If adding the
+    /// [Bucket] failed due to an (re-)allocation failure, an error is returned
+    /// alongside the bucket which could not be added.
+    fn add_bucket(&mut self, buckets: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>>;
 
     /// Create an [Extender] for this accumulator
     ///
@@ -37,7 +41,7 @@ pub trait BucketAccumulator {
 impl<A: BucketAccumulator> BucketAccumulator for &mut A {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
         (*self).add_bucket(bucket)
     }
 }
@@ -45,15 +49,18 @@ impl<A: BucketAccumulator> BucketAccumulator for &mut A {
 impl<T: Ord> BucketAccumulator for SortBuf<T> {
     type Item = T;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
-        self.buckets.push(bucket.into())
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+        match self.buckets.try_reserve(1) {
+            Ok(_)   => Ok(self.buckets.push(bucket.into())),
+            Err(e)  => Err((e.into(), bucket)),
+        }
     }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for Mutex<A> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
         self.lock().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -61,7 +68,7 @@ impl<A: BucketAccumulator> BucketAccumulator for Mutex<A> {
 impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
         self.lock().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -69,7 +76,7 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
 impl<A: BucketAccumulator> BucketAccumulator for RwLock<A> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
         self.write().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -77,7 +84,7 @@ impl<A: BucketAccumulator> BucketAccumulator for RwLock<A> {
 impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) {
+    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
         self.write().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -86,17 +93,18 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// Item feeder for [BucketAccumulator]s
 ///
 /// Instances of this type allow collecting items into [Bucket]s and committing
-/// them to a [BucketAccumulator]. In particular, this type implements [Extend].
+/// them to a [BucketAccumulator] via the [insert_items](Self::insert_items)
+/// function.
 ///
 /// # Time complexity
 ///
-/// The implementation of [Extend::extend] comes with an estimated runtime cost
-/// of O(_n_ log(_b_) + _a_(_n_/_b_)) with _n_ denoting the number of items by
-/// which the `Extender` is extended, _b_ denoting the target bucket size the
-/// instance was constructed with and _a(x)_ denoting the complexity of adding
-/// _x_ buckets to the [BucketAccumulator]. Since the influence of the second
-/// term will be neglectible for sufficiently large _b_ and all relevant
-/// implementations, the estimated runtime cost is effectifely O(_n_ log(_b_)).
+/// A call to [insert_items](Self::insert_items) comes with an estimated runtime
+/// cost of O(_n_ log(_b_) + _a_(_n_/_b_)) with _n_ denoting the number of items
+/// to insert, _b_ denoting the target bucket size the instance was constructed
+/// with and _a(x)_ denoting the complexity of adding _x_ buckets to the
+/// [BucketAccumulator]. Since the influence of the second term will be
+/// neglectible for sufficiently large _b_ and all relevant implementations, the
+/// estimated runtime cost is effectifely O(_n_ log(_b_)).
 ///
 /// # Bucket target size
 ///
@@ -126,6 +134,52 @@ impl<A: BucketAccumulator> Extender<A> {
     pub fn new(bucket_accumulator: A) -> Self {
         let bucket_size = Self::size_from_bytesize(bucket::DEFAULT_BUCKET_BYTESIZE);
         Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
+    }
+
+    /// Insert items into the accumulator
+    ///
+    /// This function inserts the given `items` to the buffer. If the insertion
+    /// fails due to an (re-)allocation failure, an error is returned alongside
+    /// an iterator over those items that were not inserted.
+    pub fn insert_items(
+        &mut self,
+        items: impl IntoIterator<Item = A::Item>,
+    ) -> InsertionResult<impl Iterator<Item = A::Item>> {
+        let mut items = items.into_iter().fuse();
+
+        // The bucket size may have changed since the last attempt to insert
+        // items. We don't want to grow buckets (or accumulators) after their
+        // creation, as the reallocation might be costly. Shrinking, however,
+        // should be unproblematic.
+        let bucket_size = self.bucket_size.get();
+        self.item_accumulator.shrink_to(bucket_size);
+
+        // We first try to fill the current bucket to its capacity.
+        let head_room = self.item_accumulator.capacity().saturating_sub(self.item_accumulator.len());
+        self.item_accumulator.extend(items.by_ref().take(head_room));
+
+        // As long as we get full buckets worth of items out of the iterator, we
+        // have buckets to add to the target buffer.
+        while self.item_accumulator.len() >= self.item_accumulator.capacity() {
+            let bucket = Bucket::new(std::mem::take(&mut self.item_accumulator));
+            if bucket.len() > 0 {
+                match self.bucket_accumulator.add_bucket(bucket) {
+                    Ok(_)       => (),
+                    Err((e, b)) => {
+                        self.item_accumulator = b.into_inner();
+                        return Err((e, items))
+                    },
+                }
+            }
+
+            match self.item_accumulator.try_reserve(bucket_size) {
+                Ok(_)   => (),
+                Err(e)  => return Err((e.into(), items))
+            }
+            self.item_accumulator.extend(items.by_ref().take(self.item_accumulator.capacity()));
+        }
+
+        Ok(())
     }
 
     /// Set a new target bucket size
@@ -166,11 +220,7 @@ impl<A: BucketAccumulator> Extender<A> {
 
 impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
-        BucketGen::initialize(
-            &mut self.item_accumulator,
-            self.bucket_size,
-            iter.into_iter().fuse(),
-        ).for_each(|b| self.bucket_accumulator.add_bucket(b))
+        self.insert_items(iter).map_err(|(e, _)| e).expect("Failed to insert items")
     }
 }
 
@@ -178,77 +228,11 @@ impl<A: BucketAccumulator> Drop for Extender<A> {
     fn drop(&mut self) {
         let acc = std::mem::take(&mut self.item_accumulator);
         if !acc.is_empty() {
-            self.bucket_accumulator.add_bucket(Bucket::new(acc))
+            self.bucket_accumulator
+                .add_bucket(Bucket::new(acc))
+                .map_err(|(e, _)| e)
+                .expect("Failed to add final bucket")
         }
-    }
-}
-
-
-/// Iterator adapter for generating buckets
-///
-/// This [Iterator] yields [OrderedBuckets] of a fixed size from the items taken
-/// from a wrapped an [Iterator]. Items are accumulated in a `Vec` which needs
-/// to be supplied by upon creation of a generator by reference.
-///
-/// # Time complexity
-///
-/// The implementation of [Iterator::next] has an amortized time complexity of
-/// O(log(_b_)) with _b_ denoting the bucket size the instance was constructed
-/// with. Draining the entire [Iterator] thus has an expected time complexity
-/// of O(_n_*log(_b_)) with _n_ being the number of items yielded by the item
-/// source.
-pub(crate) struct BucketGen<'a, T: Ord, I: FusedIterator<Item = T>> {
-    accumulator: &'a mut Vec<T>,
-    bucket_size: NonZeroUsize,
-    item_source: I,
-}
-
-impl<'a, T: Ord, I: FusedIterator<Item = T>> BucketGen<'a, T, I> {
-    /// Create a generator, initializing the given accumulator
-    ///
-    /// This function creates a bucket generator yielding buckets of the given
-    /// `bucket_size` (number of items in a bucket). As a preparation, it tries
-    /// to fill up the given accumulator with items. If the terget `bucket_size`
-    /// is not reached during initialization, the resulting [Iterator] will not
-    /// yield any buckets.
-    pub fn initialize(accumulator: &'a mut Vec<T>, bucket_size: NonZeroUsize, mut item_source: I) -> Self {
-        let head_room = bucket_size.get().saturating_sub(accumulator.len());
-        accumulator.reserve(head_room);
-        accumulator.extend(item_source.by_ref().take(head_room));
-
-        Self{accumulator, bucket_size, item_source}
-    }
-}
-
-impl<T: Ord, I: FusedIterator<Item = T>> FusedIterator for BucketGen<'_, T, I> {}
-
-impl<T: Ord, I: FusedIterator<Item = T>> Iterator for BucketGen<'_, T, I> {
-    type Item = Bucket<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let bucket_size = self.bucket_size.get();
-
-        // We'll fill bucket after bucket until we drained iter dry. That point
-        // we reach once we end up having room left in the current one.
-        if self.accumulator.len() >= bucket_size {
-            let next_bucket = self.item_source.by_ref().take(bucket_size).collect();
-
-            // Creating a `Bucket` comes with the cost of sorting its items.
-            Some(Bucket::new(std::mem::replace(self.accumulator, next_bucket)))
-        } else {
-            None
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let current_bucket = self.accumulator.len();
-        let bucket_size = self.bucket_size.get();
-        let (source_min, source_max) = self.item_source.size_hint();
-
-        (
-            (source_min.saturating_add(current_bucket) / bucket_size),
-            source_max.and_then(|s| s.checked_add(current_bucket)).map(|s| (s / bucket_size))
-        )
     }
 }
 
