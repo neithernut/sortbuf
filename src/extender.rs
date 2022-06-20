@@ -93,17 +93,18 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// Item feeder for [BucketAccumulator]s
 ///
 /// Instances of this type allow collecting items into [Bucket]s and committing
-/// them to a [BucketAccumulator]. In particular, this type implements [Extend].
+/// them to a [BucketAccumulator] via the [insert_items](Self::insert_items)
+/// function.
 ///
 /// # Time complexity
 ///
-/// The implementation of [Extend::extend] comes with an estimated runtime cost
-/// of O(_n_ log(_b_) + _a_(_n_/_b_)) with _n_ denoting the number of items by
-/// which the `Extender` is extended, _b_ denoting the target bucket size the
-/// instance was constructed with and _a(x)_ denoting the complexity of adding
-/// _x_ buckets to the [BucketAccumulator]. Since the influence of the second
-/// term will be neglectible for sufficiently large _b_ and all relevant
-/// implementations, the estimated runtime cost is effectifely O(_n_ log(_b_)).
+/// A call to [insert_items](Self::insert_items) comes with an estimated runtime
+/// cost of O(_n_ log(_b_) + _a_(_n_/_b_)) with _n_ denoting the number of items
+/// to insert, _b_ denoting the target bucket size the instance was constructed
+/// with and _a(x)_ denoting the complexity of adding _x_ buckets to the
+/// [BucketAccumulator]. Since the influence of the second term will be
+/// neglectible for sufficiently large _b_ and all relevant implementations, the
+/// estimated runtime cost is effectifely O(_n_ log(_b_)).
 ///
 /// # Bucket target size
 ///
