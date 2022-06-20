@@ -32,7 +32,7 @@ fn main() {
                             .lines()
                             .map(|l| l.unwrap())
                             .map(Reverse);
-                        extender.extend(lines)
+                        extender.insert_items(lines).map_err(|(e, _)| e).unwrap()
                     }
                 })
             }).collect();
@@ -41,7 +41,9 @@ fn main() {
         workers.into_iter().try_for_each(|t| t.join()).unwrap()
     } else {
         sortbuf::Extender::new(lines.clone())
-            .extend(std::io::stdin().lock().lines().map(|l| l.unwrap()).map(Reverse))
+            .insert_items(std::io::stdin().lock().lines().map(|l| l.unwrap()).map(Reverse))
+            .map_err(|(e, _)| e)
+            .unwrap()
     }
 
     lines.lock().unwrap().take().unreversed().for_each(|l| println!("{}", l));
