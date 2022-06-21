@@ -98,7 +98,7 @@
 //! parallelizable and incurs a higher memory overhead.
 
 mod bucket;
-mod extender;
+mod inserter;
 mod iter;
 
 pub mod error;
@@ -108,7 +108,7 @@ mod tests;
 
 
 pub use bucket::{Bucket, DEFAULT_BUCKET_BYTESIZE};
-pub use extender::{BucketAccumulator, Inserter};
+pub use inserter::{BucketAccumulator, Inserter};
 
 
 /// Data structure for preparing a large number of items for sorted iteration
