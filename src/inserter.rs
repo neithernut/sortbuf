@@ -218,6 +218,22 @@ impl<A: BucketAccumulator> Inserter<A> {
     }
 }
 
+impl<A: BucketAccumulator<Item = std::cmp::Reverse<T>>, T: Ord> Inserter<A> {
+    /// Insert reversed items into the accumulator
+    ///
+    /// This function inserts the given `items` to the buffer, each wrapped in
+    /// a [std::cmp::Reverse]. If the insertion fails due to an (re-)allocation
+    /// failure, an error is returned alongside an iterator over those items
+    /// that were not inserted.
+    pub fn insert_items_reversed(
+        &mut self,
+        items: impl IntoIterator<Item = T>,
+    ) -> InsertionResult<impl Iterator<Item = T>> {
+        self.insert_items(items.into_iter().map(std::cmp::Reverse))
+            .map_err(|(e, i)| (e, i.map(|std::cmp::Reverse(v)| v)))
+    }
+}
+
 impl<A: BucketAccumulator> Extend<A::Item> for Inserter<A> {
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
         self.insert_items(iter).map_err(|(e, _)| e).expect("Failed to insert items")
