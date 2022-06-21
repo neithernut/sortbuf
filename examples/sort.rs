@@ -26,13 +26,13 @@ fn main() {
                 let paths = paths.clone();
                 let lines = lines.clone();
                 std::thread::spawn(move || {
-                    let mut extender = sortbuf::Inserter::new(lines);
+                    let mut inserter = sortbuf::Inserter::new(lines);
                     while let Some(path) = paths.lock().unwrap().next() {
                         let lines = std::io::BufReader::new(std::fs::File::open(path).unwrap())
                             .lines()
                             .map(|l| l.unwrap())
                             .map(Reverse);
-                        extender.insert_items(lines).map_err(|(e, _)| e).unwrap()
+                        inserter.insert_items(lines).map_err(|(e, _)| e).unwrap()
                     }
                 })
             }).collect();
