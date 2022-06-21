@@ -17,9 +17,9 @@
 //!
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
-//! let mut extender = sortbuf::Inserter::new(&mut sortbuf);
-//! extender.insert_items([10, 20, 5, 17]).map_err(|(e, _)| e).expect("Failed to insert items");
-//! drop(extender);
+//! let mut inserter = sortbuf::Inserter::new(&mut sortbuf);
+//! inserter.insert_items([10, 20, 5, 17]).map_err(|(e, _)| e).expect("Failed to insert items");
+//! drop(inserter);
 //! assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
 //! ```
 //!
@@ -27,12 +27,12 @@
 //!
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
-//! let mut extender = sortbuf::Inserter::new(&mut sortbuf);
-//! extender
+//! let mut inserter = sortbuf::Inserter::new(&mut sortbuf);
+//! inserter
 //!     .insert_items([10, 20, 5, 17].into_iter().map(std::cmp::Reverse))
 //!     .map_err(|(e, _)| e)
 //!     .expect("Failed to insert items");
-//! drop(extender);
+//! drop(inserter);
 //! assert!(sortbuf.unreversed().eq([5, 10, 17, 20]));
 //! ```
 //!
@@ -42,8 +42,8 @@
 //! use std::sync::{Arc, Mutex};
 //! let sortbuf: Arc<Mutex<sortbuf::SortBuf<_>>> = Default::default();
 //! let workers: Vec<_> = (0..4).map(|n| {
-//!     let mut extender = sortbuf::Inserter::new(sortbuf.clone());
-//!     std::thread::spawn(move || extender
+//!     let mut inserter = sortbuf::Inserter::new(sortbuf.clone());
+//!     std::thread::spawn(move || inserter
 //!         .insert_items((0..1000).map(|i| 4*i+n))
 //!         .map_err(|(e, _)| e)
 //!         .expect("Failed to insert items"))
