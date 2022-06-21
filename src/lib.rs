@@ -17,7 +17,7 @@
 //!
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
-//! let mut extender = sortbuf::Extender::new(&mut sortbuf);
+//! let mut extender = sortbuf::Inserter::new(&mut sortbuf);
 //! extender.insert_items([10, 20, 5, 17]).map_err(|(e, _)| e).expect("Failed to insert items");
 //! drop(extender);
 //! assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
@@ -27,7 +27,7 @@
 //!
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
-//! let mut extender = sortbuf::Extender::new(&mut sortbuf);
+//! let mut extender = sortbuf::Inserter::new(&mut sortbuf);
 //! extender
 //!     .insert_items([10, 20, 5, 17].into_iter().map(std::cmp::Reverse))
 //!     .map_err(|(e, _)| e)
@@ -36,13 +36,13 @@
 //! assert!(sortbuf.unreversed().eq([5, 10, 17, 20]));
 //! ```
 //!
-//! Multithreaded insertion is supported via multiple [Extender]s:
+//! Multithreaded insertion is supported via multiple [Inserter]s:
 //!
 //! ```
 //! use std::sync::{Arc, Mutex};
 //! let sortbuf: Arc<Mutex<sortbuf::SortBuf<_>>> = Default::default();
 //! let workers: Vec<_> = (0..4).map(|n| {
-//!     let mut extender = sortbuf::Extender::new(sortbuf.clone());
+//!     let mut extender = sortbuf::Inserter::new(sortbuf.clone());
 //!     std::thread::spawn(move || extender
 //!         .insert_items((0..1000).map(|i| 4*i+n))
 //!         .map_err(|(e, _)| e)
@@ -55,7 +55,7 @@
 //! # Approach and comparison
 //!
 //! As indicated in the examples above, adding new items to a buffer is done via
-//! [Extender]s. These accumulate items in pre-sorted [Bucket]s and commit them
+//! [Inserter]s. These accumulate items in pre-sorted [Bucket]s and commit them
 //! to their target buffer. Later, that buffer can be converted to an [Iterator]
 //! which yields items taken from those [Bucket]s, which involves selecting the
 //! [Bucket] with the current greatest item in the buffer.
@@ -108,13 +108,13 @@ mod tests;
 
 
 pub use bucket::{Bucket, DEFAULT_BUCKET_BYTESIZE};
-pub use extender::{BucketAccumulator, Extender};
+pub use extender::{BucketAccumulator, Inserter};
 
 
 /// Data structure for preparing a large number of items for sorted iteration
 ///
 /// This data structure buffers items for later iteration in descending order.
-/// New items are inserted via an [Extender] which has to be constructed
+/// New items are inserted via an [Inserter] which has to be constructed
 /// separately for a given buffer. Once all (or sufficently many) items are
 /// inserted, [IntoIterator] may be used for iterating over these items in
 /// descending order (according to the items' implementation of [Ord]).
@@ -125,7 +125,7 @@ pub use extender::{BucketAccumulator, Extender};
 /// # Time complexity
 ///
 /// Assuming a fixed bucket size _b_, the estimated runtime cost of inserting _n_
-/// items via [Extender]s is O(_n_ log(_b_)). The estimated runtime cost of
+/// items via [Inserter]s is O(_n_ log(_b_)). The estimated runtime cost of
 /// draining the [Iterator] provided through this type's [IntoIterator] impl is
 /// O(_n_ log(_n_/_b_)).
 ///

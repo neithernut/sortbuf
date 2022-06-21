@@ -28,13 +28,13 @@ pub trait BucketAccumulator {
     /// alongside the bucket which could not be added.
     fn add_bucket(&mut self, buckets: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>>;
 
-    /// Create an [Extender] for this accumulator
+    /// Create an [Inserter] for this accumulator
     ///
-    /// Create a new [Extender] for this accumulator. [Bucket]s committed though
-    /// the [Extender] returned will be of a size near a
+    /// Create a new [Inserter] for this accumulator. [Bucket]s committed though
+    /// the [Inserter] returned will be of a size near a
     /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
-    fn extender(self) -> Extender<Self> where Self: Sized {
-        Extender::new(self)
+    fn inserter(self) -> Inserter<Self> where Self: Sized {
+        Inserter::new(self)
     }
 }
 
@@ -111,24 +111,24 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// While the above indicates that insertion is more costly with larget bucket
 /// sizes, the _overall_ sorting performance benefits from larger buckets.
 ///
-/// An `Extender` fills [Bucket]s up to a target bucket size. A new `Extender`
+/// An `Inserter` fills [Bucket]s up to a target bucket size. A new `Inserter`
 /// is initialized with a [default value](bucket::DEFAULT_BUCKET_BYTESIZE) which
 /// is chosen to be safe in most situations, i.e. a value which is unlikely to
 /// promote exhausting or overcomitting memory. However, for better performance
 /// users of this type are encouraged to choose a target bucket size based on
-/// the availible memory and the number of `Extender`s involved in the target
+/// the availible memory and the number of `Inserter`s involved in the target
 /// use-case.
 ///
-pub struct Extender<A: BucketAccumulator> {
+pub struct Inserter<A: BucketAccumulator> {
     item_accumulator: Vec<A::Item>,
     bucket_accumulator: A,
     bucket_size: NonZeroUsize,
 }
 
-impl<A: BucketAccumulator> Extender<A> {
-    /// Create a new `Extender` with a default bucket target size
+impl<A: BucketAccumulator> Inserter<A> {
+    /// Create a new `Inserter` with a default bucket target size
     ///
-    /// Create a new `Extender` for the given `bucket_accumulator`. [Bucket]s
+    /// Create a new `Inserter` for the given `bucket_accumulator`. [Bucket]s
     /// committed to that [BucketAccumulator] will be of a size near a
     /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
     pub fn new(bucket_accumulator: A) -> Self {
@@ -184,7 +184,7 @@ impl<A: BucketAccumulator> Extender<A> {
 
     /// Set a new target bucket size
     ///
-    /// After calling this function, this extender will commit [Bucket]s
+    /// After calling this function, this inserter will commit [Bucket]s
     /// containing near `size` items.
     pub fn set_bucket_size(&mut self, size: NonZeroUsize) -> &mut Self {
         self.bucket_size = size;
@@ -193,7 +193,7 @@ impl<A: BucketAccumulator> Extender<A> {
 
     /// Set a new target bucket size in bytes
     ///
-    /// After calling this function, this extender will commit [Bucket]s near
+    /// After calling this function, this inserter will commit [Bucket]s near
     /// `bytesize` bytes in size.
     pub fn set_bucket_bytesize(&mut self, bytesize: usize) -> &mut Self {
         self.bucket_size = Self::size_from_bytesize(bytesize);
@@ -218,13 +218,13 @@ impl<A: BucketAccumulator> Extender<A> {
     }
 }
 
-impl<A: BucketAccumulator> Extend<A::Item> for Extender<A> {
+impl<A: BucketAccumulator> Extend<A::Item> for Inserter<A> {
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
         self.insert_items(iter).map_err(|(e, _)| e).expect("Failed to insert items")
     }
 }
 
-impl<A: BucketAccumulator> Drop for Extender<A> {
+impl<A: BucketAccumulator> Drop for Inserter<A> {
     fn drop(&mut self) {
         let acc = std::mem::take(&mut self.item_accumulator);
         if !acc.is_empty() {

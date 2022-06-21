@@ -67,7 +67,7 @@ fn fill_btree(num: usize) -> impl IntoIterator<Item=u64> {
 fn fill_sortbuf(num: usize) -> impl IntoIterator<Item=u64> {
     let mut buf: sortbuf::SortBuf<_> = Default::default();
 
-    let mut extender = sortbuf::Extender::new(&mut buf);
+    let mut extender = sortbuf::Inserter::new(&mut buf);
     extender.extend(random_items(num).map(std::cmp::Reverse));
     std::mem::drop(extender);
 
@@ -78,7 +78,7 @@ fn fill_sortbuf(num: usize) -> impl IntoIterator<Item=u64> {
 fn fill_sortbuf_jumbo(num: usize) -> impl IntoIterator<Item=u64> {
     let mut buf: sortbuf::SortBuf<_> = Default::default();
 
-    let mut extender = sortbuf::Extender::new(&mut buf);
+    let mut extender = sortbuf::Inserter::new(&mut buf);
     extender.set_bucket_bytesize(sortbuf::DEFAULT_BUCKET_BYTESIZE * 4);
     extender.extend(random_items(num).map(std::cmp::Reverse));
     std::mem::drop(extender);
@@ -93,7 +93,7 @@ fn fill_sortbuf_threads(num: usize) -> impl IntoIterator<Item=u64> {
     let buf: Arc<Mutex<sortbuf::SortBuf<std::cmp::Reverse<u64>>>> = Default::default();
 
     random_items(NUM_THREADS).map(|seed| {
-        let mut extender = sortbuf::Extender::new(buf.clone());
+        let mut extender = sortbuf::Inserter::new(buf.clone());
         std::thread::spawn(move || extender.extend(
             random_items_with_seed(num / NUM_THREADS, seed.into()).map(std::cmp::Reverse)
         ))

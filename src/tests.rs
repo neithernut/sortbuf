@@ -14,10 +14,10 @@ type Item = u64;
 
 
 #[test]
-fn extender_simple() {
+fn inserter_simple() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::new(&mut buf);
+        let mut extender = extender::Inserter::new(&mut buf);
         extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(10_500));
     }
@@ -28,10 +28,10 @@ fn extender_simple() {
 
 
 #[test]
-fn extender_half() {
+fn inserter_half() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::new(&mut buf);
+        let mut extender = extender::Inserter::new(&mut buf);
         extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(500));
     }
@@ -42,10 +42,10 @@ fn extender_half() {
 
 
 #[test]
-fn extender_exact() {
+fn inserter_exact() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::new(&mut buf);
+        let mut extender = extender::Inserter::new(&mut buf);
         extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(10_000));
     }
@@ -56,10 +56,10 @@ fn extender_exact() {
 
 
 #[test]
-fn extender_multiple() {
+fn inserter_multiple() {
     let mut buf: SortBuf<_> = Default::default();
     {
-        let mut extender = extender::Extender::new(&mut buf);
+        let mut extender = extender::Inserter::new(&mut buf);
         extender.set_bucket_size(NonZeroUsize::new(1000).expect("Failed to construct bucket size"));
         extender.extend(random_items(500));
         extender.extend(random_items(1000));
