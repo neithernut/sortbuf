@@ -24,13 +24,15 @@
 //! assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
 //! ```
 //!
-//! For ascending iteration, items need to be wrapped in [std::cmp::Reverse]:
+//! For ascending iteration, items need to be wrapped in [std::cmp::Reverse].
+//! However, the library provides convenience functions for handling the
+//! (un)wrapping:
 //!
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
 //! let mut inserter = sortbuf::Inserter::new(&mut sortbuf);
 //! inserter
-//!     .insert_items([10, 20, 5, 17].into_iter().map(std::cmp::Reverse))
+//!     .insert_items_reversed([10, 20, 5, 17])
 //!     .map_err(|(e, _)| e)
 //!     .expect("Failed to insert items");
 //! drop(inserter);

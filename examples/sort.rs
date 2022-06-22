@@ -7,7 +7,6 @@
 
 
 fn main() {
-    use std::cmp::Reverse;
     use std::io::BufRead;
     use std::sync::{Arc, Mutex};
 
@@ -30,9 +29,8 @@ fn main() {
                     while let Some(path) = paths.lock().unwrap().next() {
                         let lines = std::io::BufReader::new(std::fs::File::open(path).unwrap())
                             .lines()
-                            .map(|l| l.unwrap())
-                            .map(Reverse);
-                        inserter.insert_items(lines).map_err(|(e, _)| e).unwrap()
+                            .map(|l| l.unwrap());
+                        inserter.insert_items_reversed(lines).map_err(|(e, _)| e).unwrap()
                     }
                 })
             }).collect();
@@ -41,7 +39,7 @@ fn main() {
         workers.into_iter().try_for_each(|t| t.join()).unwrap()
     } else {
         sortbuf::Inserter::new(lines.clone())
-            .insert_items(std::io::stdin().lock().lines().map(|l| l.unwrap()).map(Reverse))
+            .insert_items_reversed(std::io::stdin().lock().lines().map(|l| l.unwrap()))
             .map_err(|(e, _)| e)
             .unwrap()
     }
