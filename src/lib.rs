@@ -8,6 +8,7 @@
 //! * avoids potentially costly reallocations,
 //! * releases chunks of memory every now and then during iteration,
 //! * doesn't introduce much memory overhead,
+//! * allows reacting to allocation failures,
 //! * supports multi-threaded insertion and
 //! * isn't awfully slow.
 //!
