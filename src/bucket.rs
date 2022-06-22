@@ -142,3 +142,9 @@ impl<T: Ord> PartialEq for SortedBucket<T> {
     }
 }
 
+impl<T: Ord> fmt::Debug for SortedBucket<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "SortedBucket({} items)", self.len())
+    }
+}
+
