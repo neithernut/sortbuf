@@ -2,6 +2,7 @@
 //! Types representing individual buckets and related utilities
 
 use std::cmp::Ordering;
+use std::fmt;
 
 
 /// Default size for [Bucket]s
@@ -48,6 +49,12 @@ impl<T: Ord> Bucket<T> {
     /// Retrieve the number of items in this bucket
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl<T: Ord> fmt::Debug for Bucket<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "Bucket({} items)", self.len())
     }
 }
 
