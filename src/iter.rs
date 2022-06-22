@@ -33,6 +33,7 @@ const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it is meant for large amounts of data.
+#[derive(Debug)]
 pub struct Iter<T: Ord> {
     buckets: BinaryHeap<SortedBucket<T>>,
     shrink_theshold: usize,

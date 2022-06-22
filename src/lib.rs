@@ -147,6 +147,7 @@ pub use inserter::{BucketAccumulator, Inserter};
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it is meant for large amounts of data.
+#[derive(Debug)]
 pub struct SortBuf<T: Ord> {
     buckets: Vec<bucket::SortedBucket<T>>,
 }

@@ -119,6 +119,7 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// the availible memory and the number of `Inserter`s involved in the target
 /// use-case.
 ///
+#[derive(Debug)]
 pub struct Inserter<A: BucketAccumulator> {
     item_accumulator: Vec<A::Item>,
     bucket_accumulator: A,

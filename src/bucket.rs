@@ -2,6 +2,7 @@
 //! Types representing individual buckets and related utilities
 
 use std::cmp::Ordering;
+use std::fmt;
 
 
 /// Default size for [Bucket]s
@@ -48,6 +49,12 @@ impl<T: Ord> Bucket<T> {
     /// Retrieve the number of items in this bucket
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl<T: Ord> fmt::Debug for Bucket<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "Bucket({} items)", self.len())
     }
 }
 
@@ -132,6 +139,12 @@ impl<T: Ord> PartialEq for SortedBucket<T> {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(&self.0.last(), &other.0.last())
+    }
+}
+
+impl<T: Ord> fmt::Debug for SortedBucket<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "SortedBucket({} items)", self.len())
     }
 }
 
