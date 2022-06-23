@@ -100,9 +100,9 @@ fn fill_sortbuf_threads(num: usize) -> impl IntoIterator<Item=u64> {
     }).collect::<Vec<_>>().into_iter().try_for_each(|h| h.join()).expect("Error while waiting for threads");
 
     Arc::try_unwrap(buf)
-        .map_err(|_| ())
-        .and_then(|m| m.into_inner().map_err(|_| ()))
         .expect("Failed to unwrap buffer!")
+        .into_inner()
+        .expect("Failed to unlock buffer!")
         .unreversed()
 }
 
