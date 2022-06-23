@@ -68,7 +68,7 @@ fn fill_sortbuf(num: usize) -> impl IntoIterator<Item=u64> {
     let mut buf: sortbuf::SortBuf<_> = Default::default();
 
     let mut inserter = sortbuf::Inserter::new(&mut buf);
-    inserter.insert_items_reversed(random_items(num)).map_err(|(e, _)| e).expect("Error while inserting");
+    inserter.insert_items_reversed(random_items(num)).expect("Error while inserting");
     std::mem::drop(inserter);
 
     buf.unreversed()
@@ -80,7 +80,7 @@ fn fill_sortbuf_jumbo(num: usize) -> impl IntoIterator<Item=u64> {
 
     let mut inserter = sortbuf::Inserter::new(&mut buf);
     inserter.set_bucket_bytesize(sortbuf::DEFAULT_BUCKET_BYTESIZE * 4);
-    inserter.insert_items_reversed(random_items(num)).map_err(|(e, _)| e).expect("Error while inserting");
+    inserter.insert_items_reversed(random_items(num)).expect("Error while inserting");
     std::mem::drop(inserter);
 
     buf.unreversed()
@@ -96,7 +96,7 @@ fn fill_sortbuf_threads(num: usize) -> impl IntoIterator<Item=u64> {
         let mut inserter = sortbuf::Inserter::new(buf.clone());
         std::thread::spawn(move || inserter.insert_items_reversed(
             random_items_with_seed(num / NUM_THREADS, seed.into())
-        ).map_err(|(e, _)| e).expect("Error while inserting"))
+        ).expect("Error while inserting"))
     }).collect::<Vec<_>>().into_iter().try_for_each(|h| h.join()).expect("Error while waiting for threads");
 
     Arc::try_unwrap(buf)

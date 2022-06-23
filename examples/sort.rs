@@ -30,7 +30,7 @@ fn main() {
                         let lines = std::io::BufReader::new(std::fs::File::open(path).unwrap())
                             .lines()
                             .map(|l| l.unwrap());
-                        inserter.insert_items_reversed(lines).map_err(|(e, _)| e).unwrap()
+                        inserter.insert_items_reversed(lines).unwrap()
                     }
                 })
             }).collect();
@@ -40,7 +40,6 @@ fn main() {
     } else {
         sortbuf::Inserter::new(lines.clone())
             .insert_items_reversed(std::io::stdin().lock().lines().map(|l| l.unwrap()))
-            .map_err(|(e, _)| e)
             .unwrap()
     }
 

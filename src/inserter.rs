@@ -3,7 +3,7 @@
 
 use super::SortBuf;
 use super::bucket::{self, Bucket};
-use super::error::InsertionResult;
+use super::error::{InsertionError, InsertionResult};
 
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, RwLock};
@@ -140,12 +140,15 @@ impl<A: BucketAccumulator> Inserter<A> {
     /// Insert items into the accumulator
     ///
     /// This function inserts the given `items` to the buffer. If the insertion
-    /// fails due to an (re-)allocation failure, an error is returned alongside
-    /// an iterator over those items that were not inserted.
-    pub fn insert_items(
-        &mut self,
-        items: impl IntoIterator<Item = A::Item>,
-    ) -> InsertionResult<impl Iterator<Item = A::Item>> {
+    /// fails due to an (re-)allocation failure, an error is returned.
+    ///
+    /// Even in the event of such an error, all items consumed from the
+    /// `Iterator` passed to this method will reside either in the underlying
+    /// [BucketAccumulator] or the `Inserter`s internal accumulator after the
+    /// operation. Thus, callers can recover from allocation failures without
+    /// any data loss by passing a mutable reference to an [Iterator] rather
+    /// than a value, e.g. the result of [Iterator::by_ref].
+    pub fn insert_items(&mut self, items: impl IntoIterator<Item = A::Item>) -> Result<(), InsertionError> {
         let mut items = items.into_iter().fuse();
 
         // The bucket size may have changed since the last attempt to insert
@@ -164,19 +167,13 @@ impl<A: BucketAccumulator> Inserter<A> {
         while self.item_accumulator.len() >= self.item_accumulator.capacity() {
             let bucket = Bucket::new(std::mem::take(&mut self.item_accumulator));
             if bucket.len() > 0 {
-                match self.bucket_accumulator.add_bucket(bucket) {
-                    Ok(_)       => (),
-                    Err((e, b)) => {
-                        self.item_accumulator = b.into_inner();
-                        return Err((e, items))
-                    },
-                }
+                self.bucket_accumulator.add_bucket(bucket).map_err(|(e, b)| {
+                    self.item_accumulator = b.into_inner();
+                    e
+                })?
             }
 
-            match self.item_accumulator.try_reserve(bucket_size) {
-                Ok(_)   => (),
-                Err(e)  => return Err((e.into(), items))
-            }
+            self.item_accumulator.try_reserve(bucket_size)?;
             self.item_accumulator.extend(items.by_ref().take(self.item_accumulator.capacity()));
         }
 
@@ -229,15 +226,14 @@ impl<A: BucketAccumulator<Item = std::cmp::Reverse<T>>, T: Ord> Inserter<A> {
     pub fn insert_items_reversed(
         &mut self,
         items: impl IntoIterator<Item = T>,
-    ) -> InsertionResult<impl Iterator<Item = T>> {
+    ) -> Result<(), InsertionError> {
         self.insert_items(items.into_iter().map(std::cmp::Reverse))
-            .map_err(|(e, i)| (e, i.map(|std::cmp::Reverse(v)| v)))
     }
 }
 
 impl<A: BucketAccumulator> Extend<A::Item> for Inserter<A> {
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
-        self.insert_items(iter).map_err(|(e, _)| e).expect("Failed to insert items")
+        self.insert_items(iter).expect("Failed to insert items")
     }
 }
 

@@ -12,7 +12,7 @@ provides no other functionality.
 ```rust
 let mut sortbuf = sortbuf::SortBuf::new();
 let mut inserter = sortbuf::Inserter::new(&mut sortbuf);
-inserter.insert_items([10, 20, 5, 17]).map_err(|(e, _)| e).expect("Failed to insert items");
+inserter.insert_items([10, 20, 5, 17]).expect("Failed to insert items");
 drop(inserter);
 assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
 ```

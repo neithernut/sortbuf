@@ -19,7 +19,7 @@
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
 //! let mut inserter = sortbuf::Inserter::new(&mut sortbuf);
-//! inserter.insert_items([10, 20, 5, 17]).map_err(|(e, _)| e).expect("Failed to insert items");
+//! inserter.insert_items([10, 20, 5, 17]).expect("Failed to insert items");
 //! drop(inserter);
 //! assert!(sortbuf.into_iter().eq([20, 17, 10, 5]));
 //! ```
@@ -31,10 +31,7 @@
 //! ```
 //! let mut sortbuf = sortbuf::SortBuf::new();
 //! let mut inserter = sortbuf::Inserter::new(&mut sortbuf);
-//! inserter
-//!     .insert_items_reversed([10, 20, 5, 17])
-//!     .map_err(|(e, _)| e)
-//!     .expect("Failed to insert items");
+//! inserter.insert_items_reversed([10, 20, 5, 17]).expect("Failed to insert items");
 //! drop(inserter);
 //! assert!(sortbuf.unreversed().eq([5, 10, 17, 20]));
 //! ```
@@ -48,7 +45,6 @@
 //!     let mut inserter = sortbuf::Inserter::new(sortbuf.clone());
 //!     std::thread::spawn(move || inserter
 //!         .insert_items((0..1000).map(|i| 4*i+n))
-//!         .map_err(|(e, _)| e)
 //!         .expect("Failed to insert items"))
 //! }).collect();
 //! workers.into_iter().try_for_each(|h| h.join()).unwrap();
