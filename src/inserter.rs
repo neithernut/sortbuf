@@ -243,7 +243,6 @@ impl<A: BucketAccumulator> Drop for Inserter<A> {
         if !acc.is_empty() {
             self.bucket_accumulator
                 .add_bucket(Bucket::new(acc))
-                .map_err(|(e, _)| e)
                 .expect("Failed to add final bucket")
         }
     }
