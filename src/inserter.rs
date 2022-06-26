@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! Types and utilites for adding items to a [SortBuf](super::SortBuf)
 
+use std::alloc::Allocator;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -21,35 +22,63 @@ pub trait BucketAccumulator {
     /// The type of items buckets contain
     type Item: Ord;
 
+    /// [Allocator] to use for [Bucket]s' contents
+    type Allocator: Allocator;
+
     /// Add a new [Bucket] to this accumulator
     ///
     /// This function adds the given [Bucket] to the accumulator. If adding the
     /// [Bucket] failed due to an (re-)allocation failure, an error is returned
     /// alongside the bucket which could not be added.
-    fn add_bucket(&mut self, buckets: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>>;
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>>;
 
     /// Create an [Inserter] for this accumulator
     ///
     /// Create a new [Inserter] for this accumulator. [Bucket]s committed though
     /// the [Inserter] returned will be of a size near a
     /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
-    fn inserter(self) -> Inserter<Self> where Self: Sized {
-        Inserter::new(self)
+    fn inserter(self) -> Inserter<Self> where Self: Sized, Self::Allocator: Clone + Default {
+        Self::inserter_in(self, Default::default())
+    }
+
+    /// Create an [Inserter] for this accumulator
+    ///
+    /// Create a new [Inserter] for this accumulator. [Bucket]s committed though
+    /// the [Inserter] returned will be of a size near a
+    /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
+    fn inserter_in(self, allocator: Self::Allocator) -> Inserter<Self>
+    where Self: Sized,
+          Self::Allocator: Clone,
+    {
+        Inserter::new_in(self, allocator)
     }
 }
 
 impl<A: BucketAccumulator> BucketAccumulator for &mut A {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+    type Allocator = A::Allocator;
+
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>> {
         (*self).add_bucket(bucket)
     }
 }
 
-impl<T: Ord> BucketAccumulator for SortBuf<T> {
+impl<T: Ord, A: Allocator> BucketAccumulator for SortBuf<T, A> {
     type Item = T;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+    type Allocator = A;
+
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>> {
         match self.buckets.try_reserve(1) {
             Ok(_)   => Ok(self.buckets.push(bucket.into())),
             Err(e)  => Err((e.into(), bucket)),
@@ -60,7 +89,12 @@ impl<T: Ord> BucketAccumulator for SortBuf<T> {
 impl<A: BucketAccumulator> BucketAccumulator for Mutex<A> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+    type Allocator = A::Allocator;
+
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>> {
         self.lock().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -68,7 +102,12 @@ impl<A: BucketAccumulator> BucketAccumulator for Mutex<A> {
 impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+    type Allocator = A::Allocator;
+
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>> {
         self.lock().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -76,7 +115,12 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<Mutex<A>> {
 impl<A: BucketAccumulator> BucketAccumulator for RwLock<A> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+    type Allocator = A::Allocator;
+
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>> {
         self.write().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -84,7 +128,12 @@ impl<A: BucketAccumulator> BucketAccumulator for RwLock<A> {
 impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
     type Item = A::Item;
 
-    fn add_bucket(&mut self, bucket: Bucket<Self::Item>) -> InsertionResult<Bucket<Self::Item>> {
+    type Allocator = A::Allocator;
+
+    fn add_bucket(
+        &mut self,
+        bucket: Bucket<Self::Item, Self::Allocator>,
+    ) -> InsertionResult<Bucket<Self::Item, Self::Allocator>> {
         self.write().expect("Could not lock mutex!").add_bucket(bucket)
     }
 }
@@ -120,21 +169,36 @@ impl<A: BucketAccumulator> BucketAccumulator for Arc<RwLock<A>> {
 /// use-case.
 ///
 #[derive(Debug)]
-pub struct Inserter<A: BucketAccumulator> {
-    item_accumulator: Vec<A::Item>,
+pub struct Inserter<A: BucketAccumulator>
+where A::Allocator: Clone,
+{
+    item_accumulator: Vec<A::Item, A::Allocator>,
+    allocator: A::Allocator,
     bucket_accumulator: A,
     bucket_size: NonZeroUsize,
 }
 
-impl<A: BucketAccumulator> Inserter<A> {
+impl<A: BucketAccumulator> Inserter<A>
+where A::Allocator: Clone,
+{
     /// Create a new `Inserter` with a default bucket target size
     ///
     /// Create a new `Inserter` for the given `bucket_accumulator`. [Bucket]s
     /// committed to that [BucketAccumulator] will be of a size near a
     /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
-    pub fn new(bucket_accumulator: A) -> Self {
+    pub fn new(bucket_accumulator: A) -> Self where A::Allocator: Default {
+        Self::new_in(bucket_accumulator, Default::default())
+    }
+
+    /// Create a new `Inserter` with a default bucket target size
+    ///
+    /// Create a new `Inserter` for the given `bucket_accumulator`. [Bucket]s
+    /// committed to that [BucketAccumulator] will be of a size near a
+    /// [default bucket size](bucket::DEFAULT_BUCKET_BYTESIZE).
+    pub fn new_in(bucket_accumulator: A, allocator: A::Allocator) -> Self {
+        let item_accumulator = Vec::new_in(allocator.clone());
         let bucket_size = Self::size_from_bytesize(bucket::DEFAULT_BUCKET_BYTESIZE);
-        Self{item_accumulator: Default::default(), bucket_accumulator, bucket_size}
+        Self{item_accumulator, allocator, bucket_accumulator, bucket_size}
     }
 
     /// Insert items into the accumulator
@@ -165,7 +229,9 @@ impl<A: BucketAccumulator> Inserter<A> {
         // As long as we get full buckets worth of items out of the iterator, we
         // have buckets to add to the target buffer.
         while self.item_accumulator.len() >= self.item_accumulator.capacity() {
-            let bucket = Bucket::new(std::mem::take(&mut self.item_accumulator));
+            let bucket = Bucket::new(
+                std::mem::replace(&mut self.item_accumulator, Vec::new_in(self.allocator.clone())),
+            );
             if bucket.len() > 0 {
                 self.bucket_accumulator.add_bucket(bucket).map_err(|(e, b)| {
                     self.item_accumulator = b.into_inner();
@@ -216,7 +282,9 @@ impl<A: BucketAccumulator> Inserter<A> {
     }
 }
 
-impl<A: BucketAccumulator<Item = std::cmp::Reverse<T>>, T: Ord> Inserter<A> {
+impl<A: BucketAccumulator<Item = std::cmp::Reverse<T>>, T: Ord> Inserter<A>
+where A::Allocator: Clone,
+{
     /// Insert reversed items into the accumulator
     ///
     /// This function inserts the given `items` to the buffer, each wrapped in
@@ -231,15 +299,19 @@ impl<A: BucketAccumulator<Item = std::cmp::Reverse<T>>, T: Ord> Inserter<A> {
     }
 }
 
-impl<A: BucketAccumulator> Extend<A::Item> for Inserter<A> {
+impl<A: BucketAccumulator> Extend<A::Item> for Inserter<A>
+where A::Allocator: Clone,
+{
     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iter: I) {
         self.insert_items(iter).expect("Failed to insert items")
     }
 }
 
-impl<A: BucketAccumulator> Drop for Inserter<A> {
+impl<A: BucketAccumulator> Drop for Inserter<A>
+where A::Allocator: Clone,
+{
     fn drop(&mut self) {
-        let acc = std::mem::take(&mut self.item_accumulator);
+        let acc = std::mem::replace(&mut self.item_accumulator, Vec::new_in(self.allocator.clone()));
         if !acc.is_empty() {
             self.bucket_accumulator
                 .add_bucket(Bucket::new(acc))
