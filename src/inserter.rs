@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 //! Types and utilites for adding items to a [SortBuf](super::SortBuf)
 
+use std::num::NonZeroUsize;
+use std::sync::{Arc, Mutex, RwLock};
+
 use super::SortBuf;
 use super::bucket::{self, Bucket};
 use super::error::{InsertionError, InsertionResult};
-
-use std::num::NonZeroUsize;
-use std::sync::{Arc, Mutex, RwLock};
 
 
 /// Accumulator for [Bucket]s
