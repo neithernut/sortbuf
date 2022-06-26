@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! [Iter] type and related utilities
 
-use std::alloc::Global;
+use std::alloc::{Allocator, Global};
 use std::collections::binary_heap::{self, BinaryHeap};
 use std::iter::FusedIterator;
 
@@ -35,12 +35,12 @@ const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it is meant for large amounts of data.
 #[derive(Debug)]
-pub struct Iter<T: Ord> {
-    buckets: BinaryHeap<SortedBucket<T, Global>>,
+pub struct Iter<T: Ord, A: Allocator = Global> {
+    buckets: BinaryHeap<SortedBucket<T, A>>,
     shrink_theshold: usize,
 }
 
-impl<T: Ord> Iter<T> {
+impl<T: Ord, A: Allocator> Iter<T, A> {
     /// Set the number of unused item slots buckets are allowed to accumulate
     ///
     /// This iterator pulls items from a number of buckets, which will thus
@@ -66,8 +66,8 @@ impl<T: Ord> Iter<T> {
     }
 }
 
-impl<T: Ord> From<Vec<SortedBucket<T, Global>>> for Iter<T> {
-    fn from(buckets: Vec<SortedBucket<T, Global>>) -> Self {
+impl<T: Ord, A: Allocator> From<Vec<SortedBucket<T, A>>> for Iter<T, A> {
+    fn from(buckets: Vec<SortedBucket<T, A>>) -> Self {
         Self{
             buckets: buckets.into(),
             shrink_theshold: DEFAULT_SHRINK_THRESHOLD_BYTES / std::mem::size_of::<T>(),
@@ -75,11 +75,11 @@ impl<T: Ord> From<Vec<SortedBucket<T, Global>>> for Iter<T> {
     }
 }
 
-impl<T: Ord> ExactSizeIterator for Iter<T> {}
+impl<T: Ord, A: Allocator> ExactSizeIterator for Iter<T, A> {}
 
-impl<T: Ord> FusedIterator for Iter<T> {}
+impl<T: Ord, A: Allocator> FusedIterator for Iter<T, A> {}
 
-impl<T: Ord> Iterator for Iter<T> {
+impl<T: Ord, A: Allocator> Iterator for Iter<T, A> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
