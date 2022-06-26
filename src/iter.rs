@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! [Iter] type and related utilities
 
+use std::alloc::Global;
 use std::collections::binary_heap::{self, BinaryHeap};
 use std::iter::FusedIterator;
 
@@ -35,7 +36,7 @@ const DEFAULT_SHRINK_THRESHOLD_BYTES: usize = 1024*1024;
 /// it is meant for large amounts of data.
 #[derive(Debug)]
 pub struct Iter<T: Ord> {
-    buckets: BinaryHeap<SortedBucket<T>>,
+    buckets: BinaryHeap<SortedBucket<T, Global>>,
     shrink_theshold: usize,
 }
 
@@ -65,8 +66,8 @@ impl<T: Ord> Iter<T> {
     }
 }
 
-impl<T: Ord> From<Vec<SortedBucket<T>>> for Iter<T> {
-    fn from(buckets: Vec<SortedBucket<T>>) -> Self {
+impl<T: Ord> From<Vec<SortedBucket<T, Global>>> for Iter<T> {
+    fn from(buckets: Vec<SortedBucket<T, Global>>) -> Self {
         Self{
             buckets: buckets.into(),
             shrink_theshold: DEFAULT_SHRINK_THRESHOLD_BYTES / std::mem::size_of::<T>(),

@@ -98,6 +98,8 @@
 
 #![feature(allocator_api)]
 
+use std::alloc::Global;
+
 mod bucket;
 mod inserter;
 mod iter;
@@ -147,7 +149,7 @@ pub use inserter::{BucketAccumulator, Inserter};
 /// it is meant for large amounts of data.
 #[derive(Debug)]
 pub struct SortBuf<T: Ord> {
-    buckets: Vec<bucket::SortedBucket<T>>,
+    buckets: Vec<bucket::SortedBucket<T, Global>>,
 }
 
 impl<T: Ord> SortBuf<T> {

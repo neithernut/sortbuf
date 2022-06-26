@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 //! Types representing individual buckets and related utilities
 
+use std::alloc::{Allocator, Global};
 use std::cmp::Ordering;
 use std::fmt;
-use std::alloc::{Allocator, Global};
 
 
 /// Default size for [Bucket]s
@@ -74,9 +74,9 @@ impl<T: Ord, A: Allocator> fmt::Debug for Bucket<T, A> {
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it holds non-shared ownership over significant amounts of data.
-pub(crate) struct SortedBucket<T: Ord>(Vec<T>);
+pub(crate) struct SortedBucket<T: Ord, A: Allocator>(Vec<T, A>);
 
-impl<T: Ord> SortedBucket<T> {
+impl<T: Ord, A: Allocator> SortedBucket<T, A> {
     /// Retrieve the current overcapacity of this bucket
     ///
     /// The overcapacity is defined as the number of additional items the inner
@@ -95,17 +95,17 @@ impl<T: Ord> SortedBucket<T> {
     }
 }
 
-impl<T: Ord> From<Bucket<T>> for SortedBucket<T> {
-    fn from(Bucket(items): Bucket<T>) -> Self {
+impl<T: Ord, A: Allocator> From<Bucket<T, A>> for SortedBucket<T, A> {
+    fn from(Bucket(items): Bucket<T, A>) -> Self {
         Self(items)
     }
 }
 
-impl<T: Ord> ExactSizeIterator for SortedBucket<T> {}
+impl<T: Ord, A: Allocator> ExactSizeIterator for SortedBucket<T, A> {}
 
-impl<T: Ord> std::iter::FusedIterator for SortedBucket<T> {}
+impl<T: Ord, A: Allocator> std::iter::FusedIterator for SortedBucket<T, A> {}
 
-impl<T: Ord> Iterator for SortedBucket<T> {
+impl<T: Ord, A: Allocator> Iterator for SortedBucket<T, A> {
     type Item = T;
 
     #[inline(always)]
@@ -120,30 +120,30 @@ impl<T: Ord> Iterator for SortedBucket<T> {
     }
 }
 
-impl<T: Ord> Ord for SortedBucket<T> {
+impl<T: Ord, A: Allocator> Ord for SortedBucket<T, A> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&self.0.last(), &other.0.last())
     }
 }
 
-impl<T: Ord> PartialOrd for SortedBucket<T> {
+impl<T: Ord, A: Allocator> PartialOrd for SortedBucket<T, A> {
     #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&self.0.last(), &other.0.last())
     }
 }
 
-impl<T: Ord> Eq for SortedBucket<T> {}
+impl<T: Ord, A: Allocator> Eq for SortedBucket<T, A> {}
 
-impl<T: Ord> PartialEq for SortedBucket<T> {
+impl<T: Ord, A: Allocator> PartialEq for SortedBucket<T, A> {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(&self.0.last(), &other.0.last())
     }
 }
 
-impl<T: Ord> fmt::Debug for SortedBucket<T> {
+impl<T: Ord, A: Allocator> fmt::Debug for SortedBucket<T, A> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "SortedBucket({} items)", self.len())
     }
