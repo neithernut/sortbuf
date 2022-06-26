@@ -98,7 +98,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::Global;
+use std::alloc::{Allocator, Global};
 
 mod bucket;
 mod inserter;
@@ -148,29 +148,31 @@ pub use inserter::{BucketAccumulator, Inserter};
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it is meant for large amounts of data.
 #[derive(Debug)]
-pub struct SortBuf<T: Ord> {
-    buckets: Vec<bucket::SortedBucket<T, Global>>,
+pub struct SortBuf<T: Ord, A: Allocator = Global> {
+    buckets: Vec<bucket::SortedBucket<T, A>>,
 }
 
-impl<T: Ord> SortBuf<T> {
+impl<T: Ord> SortBuf<T, Global> {
     /// Create a new sorting buffer
     pub fn new() -> Self {
-        Self {buckets: Vec::new()}
+        Default::default()
     }
+}
 
+impl<T: Ord, A: Allocator> SortBuf<T, A> {
     /// Take this buffer's contents, leaving an empty buffer
     pub fn take(&mut self) -> Self {
         std::mem::take(self)
     }
 }
 
-impl<T: Ord> Default for SortBuf<T> {
+impl<T: Ord, A: Allocator> Default for SortBuf<T, A> {
     fn default() -> Self {
-        Self::new()
+        Self {buckets: Vec::new()}
     }
 }
 
-impl<T: Ord> SortBuf<std::cmp::Reverse<T>> {
+impl<T: Ord, A: Allocator> SortBuf<std::cmp::Reverse<T>, A> {
     /// Convert into an [Iterator] over items unwrapped from [std::cmp::Reverse]
     ///
     /// This funtion allows convenient retrieval of the buffered items in their
@@ -181,9 +183,9 @@ impl<T: Ord> SortBuf<std::cmp::Reverse<T>> {
     }
 }
 
-impl<T: Ord> IntoIterator for SortBuf<T> {
+impl<T: Ord, A: Allocator> IntoIterator for SortBuf<T, A> {
     type Item = T;
-    type IntoIter = iter::Iter<Self::Item>;
+    type IntoIter = iter::Iter<Self::Item, A>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.buckets.into()
