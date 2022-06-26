@@ -96,6 +96,8 @@
 //! usually slower than a [SortBuf] with sufficiently large [Bucket]s, not
 //! parallelizable and incurs a higher memory overhead.
 
+#![feature(allocator_api)]
+
 mod bucket;
 mod inserter;
 mod iter;
