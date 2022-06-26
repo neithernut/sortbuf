@@ -3,6 +3,7 @@
 
 use std::cmp::Ordering;
 use std::fmt;
+use std::alloc::{Allocator, Global};
 
 
 /// Default size for [Bucket]s
@@ -26,23 +27,23 @@ pub const DEFAULT_BUCKET_BYTESIZE: usize = 16*1024*1024;
 ///
 /// The omission of an implementation of [Clone] for this type is on purpose, as
 /// it holds non-shared ownership over significant amounts of data.
-pub struct Bucket<T>(Vec<T>);
+pub struct Bucket<T, A: Allocator = Global>(Vec<T, A>);
 
-impl<T: Ord> Bucket<T> {
+impl<T: Ord, A: Allocator> Bucket<T, A> {
     /// Create a bucket from a [Vec] of items
     ///
     /// # Time complexity
     ///
     /// Construction of a sorted bucket involves sorting the items. Thus, it
     /// comes with a run-time cost of O(_b_*log(_b_)) with bucket size _b_.
-    pub(crate) fn new(mut items: Vec<T>) -> Self {
+    pub(crate) fn new(mut items: Vec<T, A>) -> Self {
         items.shrink_to_fit();
         items.sort_unstable();
         Self(items)
     }
 
     /// Convert this bucket back to a [Vec]
-    pub(crate) fn into_inner(self) -> Vec<T> {
+    pub(crate) fn into_inner(self) -> Vec<T, A> {
         self.0
     }
 
@@ -52,7 +53,7 @@ impl<T: Ord> Bucket<T> {
     }
 }
 
-impl<T: Ord> fmt::Debug for Bucket<T> {
+impl<T: Ord, A: Allocator> fmt::Debug for Bucket<T, A> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "Bucket({} items)", self.len())
     }
